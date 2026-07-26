@@ -32,9 +32,11 @@ The name is from Ilha Formosa. It reads this island's clinical language.
 - **Reads local clinical writing.** Slang, abbreviations, Taigi, handwritten shorthand. Where a general model returns noise, this one usually returns the right concept.
 - **Trained on Taiwanese clinical language**, not on any one institution's forms. It reads colloquialisms, appositions, and clinical abbreviations. A caveat worth stating plainly: an institution's *operational* shorthand — near-identical strings like `L-CT` (低劑量胸部電腦斷層, a lung screen) vs `H-CT` (頭部電腦斷層, a head CT) — is where a small int8 model is weakest, and it scores 83/110 on one real register. Fine-tuning that in makes it worse; a concept memory fixes it. See "Reading an institution's own shorthand" below.
 - **Runs on-premise.** 38.5 MB, INT8, CPU only. No GPU, no cloud, no API key. Patient data stays in the hospital.
-- **Clear provenance.** Apache-2.0 weights, a public and documented base model (IBM Granite ModernBERT), and a pipeline you can trace. Ready for a procurement or security review.
-- **Open, permissively licensed.** The released weights (`weemed/IlhaEmbed`) are Apache-2.0, and
-  the base model (IBM Granite) is Apache-2.0.
+- **Documented provenance.** The released weights and IBM Granite ModernBERT base are identified as
+  Apache-2.0. Corpus sources, non-published inputs, and their separate rights status are recorded in
+  the public [source ledger](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md).
+- **Open model, separate data rights.** The released weights and base model are permissively
+  licensed. That licence does not grant rights in upstream training or evaluation material.
 
 ## What it is for
 
@@ -49,7 +51,7 @@ In a clinical pipeline built in Taiwan, it handles the "understanding" step: Bre
 
 ## Results
 
-Task: jargon top-1. Given a Taiwanese clinical surface term, retrieve its standard concept from a shared pool, self-matches excluded, held out from training. The score is macro-averaged over three semantic registers — slang, abbreviation, and apposition — where each surface form maps to a standard Han concept (皮蛇→帶狀皰疹, L-CT→低劑量胸部電腦斷層, 傷寒→傷寒篩檢糞便檢體). All models use the same method and the same pool; numbers are from the reproducible `card_eval_cpu.py`.
+Task: jargon top-1. Given a Taiwanese clinical surface term, retrieve its standard concept from a shared pool, self-matches excluded, held out from training. The score is macro-averaged over three semantic registers — slang, abbreviation, and apposition — where each surface form maps to a standard Han concept (皮蛇→帶狀皰疹, L-CT→低劑量胸部電腦斷層, 傷寒→傷寒篩檢糞便檢體). All models use the same method and the same pool. The evaluation implementation is published in [`evaluation/research/card_eval_cpu.py`](https://github.com/WeeMed/ilhaembed/blob/main/evaluation/research/card_eval_cpu.py); its original third-party and institutional evaluation pairs are not redistributed.
 
 | Register | IlhaEmbed (fp32) | IlhaEmbed (int8) | jina-embeddings-v2-base-zh | ckip-base | bge-small-zh |
 |---|---:|---:|---:|---:|---:|
@@ -65,7 +67,10 @@ An earlier version of this card reported int8 as macro 0.810 / Taigi 0.950. Thos
 
 On these local terms the general and general-Chinese models mostly return nothing; this model finds the right concept. It is not meant to top general leaderboards such as MTEB. It does one thing, Taiwanese clinical vocabulary, and it is small enough to run on the ward.
 
-The method is reproducible. The raw evaluation pairs carry third-party copyright and are not redistributed.
+The evaluation methodology and evidence are published, but this is not a one-command reproduction
+of the exact reported run: the original third-party and institutional evaluation pairs are not
+redistributed. The public repository states the runnable and non-published boundaries explicitly in
+[`docs/REPRODUCING.md`](https://github.com/WeeMed/ilhaembed/blob/main/docs/REPRODUCING.md).
 
 ### On Taigi, and why it is not folded into that number (nothing is hidden)
 
@@ -132,7 +137,7 @@ Measured on this published artifact, with a 110-surface register:
 | Taigi-semantic | 0.929 | **0.929** — unchanged |
 | size | 38.5 MB | **38.5 MB** + a few KB |
 
-Concretely, on a 20-concept probe the base int8 model returns 頭部電腦斷層 for `L-CT` (cos 0.805 — wrong, it is a *lung* screen) and 糖尿病 for 鈣化 (cos 0.384 — wrong). With the memory both ground at 1.000, while 高血壓 / 糖尿病 / 上呼吸道感染 / 心肌梗塞 pass through untouched. [`examples/concept_memory.py`](examples/concept_memory.py) is a runnable reference implementation.
+Concretely, on a 20-concept probe the base int8 model returns 頭部電腦斷層 for `L-CT` (cos 0.805 — wrong, it is a *lung* screen) and 糖尿病 for 鈣化 (cos 0.384 — wrong). With the memory both ground at 1.000, while 高血壓 / 糖尿病 / 上呼吸道感染 / 心肌梗塞 pass through untouched. [`examples/concept_memory.py`](https://github.com/WeeMed/ilhaembed/blob/main/examples/concept_memory.py) is a runnable reference implementation.
 
 **Build the memory's keys through the same call your queries use.** This model's output depends on the batch a text was embedded in, because a batch pads to its longest member and the padding reaches the real tokens' outputs: the same string embedded inside a large batch and embedded alone are only ~0.88–0.97 similar. Mix the two paths and an exact match scores like a near-miss, and τ quietly stops meaning what it says.
 
@@ -145,8 +150,8 @@ This is a tool for semantic representation, not a diagnostic system. It offers l
 ## License
 
 Repository code and released weights are identified as Apache-2.0. Base model: IBM Granite
-(Apache-2.0). Training-pair sources and their separate rights status are listed in
-[`SOURCES.md`](SOURCES.md). Raw third-party pairs are not included. The model licence does not
+(Apache-2.0). Training-pair sources and their separate rights status are listed in the public
+[`SOURCES.md`](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md). Raw third-party pairs are not included. The model licence does not
 grant rights in upstream material or replace source-specific permission and legal review.
 
 ---
@@ -168,8 +173,8 @@ grant rights in upstream material or replace source-specific permission and lega
 - **讀得懂在地的臨床寫法。** 行話、縮寫、台語、手寫簡寫。通用模型讀成雜訊的地方，它多半能對到正確的概念。
 - **訓練的是台灣的臨床語言**，不是某一家機構的表格。口語、同位語、臨床縮寫都讀得到。但有一件事要說清楚：機構自己的**操作性**簡寫——像 `L-CT`（低劑量胸部電腦斷層，肺癌篩檢）和 `H-CT`（頭部電腦斷層）這種字面幾乎一樣的——正是小型 int8 模型最弱的地方，在一份真實語域上它只有 83/110。把它微調進權重會更差，用概念記憶才修得掉。見下方「讀懂機構自己的簡寫」。
 - **完全在地端。** 38.5 MB、INT8、純 CPU。不用 GPU、雲端或 API key，病人資料不離開院內。
-- **來源清楚。** Apache-2.0 權重，基礎模型是公開、有文件的 IBM Granite ModernBERT，訓練流程可追溯。採購或資安要看，都拿得出來。
-- **開源、寬鬆授權。** 釋出的權重（`weemed/IlhaEmbed`）是 Apache-2.0，基礎模型（IBM Granite）也是 Apache-2.0。
+- **來源有文件可查。** 釋出權重與 IBM Granite ModernBERT 底座標示為 Apache-2.0；語料來源、未公開輸入及其各自的權利狀態記錄在公開的[來源清冊](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md)。
+- **模型開放，資料權利分開。** 釋出權重與底座採寬鬆授權；該授權不會授予上游訓練或評估素材的權利。
 
 ## 用途
 
@@ -184,7 +189,7 @@ grant rights in upstream material or replace source-specific permission and lega
 
 ## 成效
 
-測的是 jargon top-1：給一個台灣臨床的表面詞，從共用概念池裡找出對應的標準概念，排除自我匹配，且留作測試。分數是**三個語意語域**（行話 slang、縮寫 abbrev、同位語 apposition）的平均，每個都是「口語／台語／縮寫的漢字表面詞 → 標準漢字概念」（皮蛇→帶狀皰疹、L-CT→低劑量胸部電腦斷層、傷寒→傷寒篩檢糞便檢體）。四個模型用同一套方法、同一個池；數字來自可重現的 `card_eval_cpu.py`。
+測的是 jargon top-1：給一個台灣臨床的表面詞，從共用概念池裡找出對應的標準概念，排除自我匹配，且留作測試。分數是**三個語意語域**（行話 slang、縮寫 abbrev、同位語 apposition）的平均，每個都是「口語／台語／縮寫的漢字表面詞 → 標準漢字概念」（皮蛇→帶狀皰疹、L-CT→低劑量胸部電腦斷層、傷寒→傷寒篩檢糞便檢體）。四個模型用同一套方法、同一個池。評估實作公開於 [`evaluation/research/card_eval_cpu.py`](https://github.com/WeeMed/ilhaembed/blob/main/evaluation/research/card_eval_cpu.py)；原始的第三方與機構評估配對不重新散布。
 
 | 語域 | IlhaEmbed（fp32） | IlhaEmbed（int8） | jina-embeddings-v2-base-zh | ckip-base | bge-small-zh |
 |---|---:|---:|---:|---:|---:|
@@ -200,7 +205,7 @@ int8 那欄是用 onnxruntime 在這裡發佈的那顆 artifact 上原生量的�
 
 在這些在地詞彙上，通用模型和一般中文模型多半讀不出來，這個模型能對到正確概念。它不是要在通用排行榜（MTEB）上比高下，只把台灣臨床詞彙這一件事做好，而且小到能在病房的機器上跑。
 
-這套方法可以重現。原始的評估配對有第三方著作權，不隨模型散佈。
+評估方法與證據有公開，但這不是「一行指令重現原始數字」：原始的第三方與機構評估配對不重新散布。公開 repo 在 [`docs/REPRODUCING.md`](https://github.com/WeeMed/ilhaembed/blob/main/docs/REPRODUCING.md) 明列可執行與未公開的邊界。
 
 ### 關於台語，以及為什麼它不併進上面那個數字（沒有藏任何東西）
 
@@ -267,7 +272,7 @@ def ground(fragment, tau=0.95):
 | Taigi-semantic | 0.929 | **0.929** —— 沒退 |
 | 體積 | 38.5 MB | **38.5 MB** ＋幾 KB |
 
-具體一點：在一個 20 個概念的探針上，底座 int8 把 `L-CT` 讀成頭部電腦斷層（cos 0.805，錯——那是**肺部**篩檢）、把鈣化讀成糖尿病（cos 0.384，錯）。加上記憶之後兩個都以 1.000 接住，而高血壓／糖尿病／上呼吸道感染／心肌梗塞則原樣通過。[`examples/concept_memory.py`](examples/concept_memory.py) 是可執行的參考實作。
+具體一點：在一個 20 個概念的探針上，底座 int8 把 `L-CT` 讀成頭部電腦斷層（cos 0.805，錯——那是**肺部**篩檢）、把鈣化讀成糖尿病（cos 0.384，錯）。加上記憶之後兩個都以 1.000 接住，而高血壓／糖尿病／上呼吸道感染／心肌梗塞則原樣通過。[`examples/concept_memory.py`](https://github.com/WeeMed/ilhaembed/blob/main/examples/concept_memory.py) 是可執行的參考實作。
 
 **記憶的 key 要用跟 query 同一個呼叫路徑建。** 這個模型的輸出會受它所在的 batch 影響——batch 會 pad 到最長的那一筆，而 padding 會影響到真實 token 的輸出：同一個字串放在大 batch 裡跟單獨嵌入，相似度只有 ~0.88–0.97。兩條路徑混用，完全相同的字串會拿到近似命中的分數，τ 就靜靜地失去了它字面上的意思。
 
@@ -279,4 +284,4 @@ def ground(fragment, tau=0.95):
 
 ## 授權
 
-Repo 程式碼與釋出權重標示為 Apache-2.0，基礎模型 IBM Granite 也是 Apache-2.0。訓練配對來源及其各自的權利狀態記在 [`SOURCES.md`](SOURCES.md)。原始第三方配對不隨附；模型授權不會授予上游素材的權利，也不能取代逐一來源的許可與法律審查。
+Repo 程式碼與釋出權重標示為 Apache-2.0，基礎模型 IBM Granite 也是 Apache-2.0。訓練配對來源及其各自的權利狀態記在公開的 [`SOURCES.md`](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md)。原始第三方配對不隨附；模型授權不會授予上游素材的權利，也不能取代逐一來源的許可與法律審查。

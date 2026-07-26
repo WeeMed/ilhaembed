@@ -100,6 +100,24 @@ reviewed, context-scoped terminology.
 See [`docs/REPOSITORY.md`](docs/REPOSITORY.md) for the boundary between
 runnable public code, research records, and non-published inputs.
 
+## Publishing the Hugging Face model card
+
+[`MODEL-CARD.md`](MODEL-CARD.md) is the content source of truth for the model
+card rendered on Hugging Face. Check for drift or publish it with:
+
+```bash
+pip install -r requirements-publish.txt
+python tools/sync_hf_model_card.py --check
+python tools/sync_hf_model_card.py --publish
+# Or use an existing Git credential without exposing a token:
+python tools/sync_hf_model_card.py --publish --transport git
+```
+
+Hugging Face stores the rendered card as `README.md`; the sync tool uploads the
+GitHub SSOT directly and verifies the remote content after publishing. It uses
+the standard `HF_TOKEN` or `hf auth login` credential flow and never handles a
+token itself.
+
 ## Reproduction boundary
 
 This is an evidence and methodology release, not a one-command reproduction of

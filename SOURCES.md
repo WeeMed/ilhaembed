@@ -1,52 +1,114 @@
-# Training-data provenance — TW clinical terminology embedder
+# Training-data provenance — IlhaEmbed
 
-Every corpus mined for the CODER-TW fine-tune, recorded for **ground-truth /
-reproducibility / licensing**. Rule: anything listed here is IN the training
-data and must NOT be reused as a held-out test set. Access date: **2026-07-18**.
+This document records the source families mined during the development of
+IlhaEmbed and its historical CODER-TW predecessor. It exists for provenance,
+reproducibility, evaluation hygiene, and licence review.
 
-## Specialized (surface → canonical) — the scarce clinical signal
+The row counts below describe the output of each mining step at the recorded
+access date (**2026-07-18**). They are not a promise that every mined row appears
+with the same weight in every released checkpoint. A source used for training
+must not also be treated as a held-out evaluation source.
 
-| id | source | how obtained | endpoint / file | rows | license | notes |
-|----|--------|--------------|-----------------|-----:|---------|-------|
-| moe-twblg | 教育部臺灣台語常用詞辭典 | open-data dump | `github.com/g0v/moedict-data-twblg` → `dict-twblg.json` | 778 | MOE open data | Taigi 漢字+台羅+華語定義; medical-regex filtered from 14,489 |
-| itaigi | iTaigi 愛台語 (g0v) | reverse-eng API | `itaigi.tw/平臺項目列表/揣列表?關鍵字=` | 1,288 | CC (條目標「會使公開」) | crowd Taigi readings + votes |
-| slang-blog | 陳志金「巷子內醫療用語」/ udn 詹廖明義 / vocus | manual WebFetch | `snore123.blogspot.com/2019/05/medword.html`, `blog.udn.com/ptsafetyrm/3771916`, `vocus.cc/article/6541c172…` | 62 | **作者著作權** | 口語黑話(摸咪/掐水/歐卡)+書面(Endo/Foley/NG) |
-| abbr-pdf | 醫院「可使用縮寫表」+ 護理教材 | curl + pdftotext | nutc, mhchcm, sijhih, kmu(失敗), wagners(需OCR), hpa | 398 | **醫院/作者著作權** | PDF 抽取,有版面噪音 |
-| wiki-redirect | 中文維基百科 重定向 | MediaWiki API | `zh.wikipedia.org/w/api.php prop=redirects` | 284 | CC BY-SA | 別名→條目;醫學 redirect 覆蓋稀疏 |
-| wiki-appos | 中文維基百科 內文同位語 | MediaWiki API | `…prop=extracts&exintro` + Hearst patterns | 371 | CC BY-SA | 「又稱/俗稱/簡稱/縮寫為」→ 挖出 CVA/COPD/心梗 等縮寫 |
-| rsroc-weiei | 中華民國放射線醫學會 衛教 | curl crawl | `rsroc.org.tw/knowledge/news/content.asp?ID=1..119` | 34 | **學會著作權** | 影像縮寫 LDCT/CTA/RFA/TACE;高精度 apposition |
+Private generated pair files are intentionally not published. Public readers
+should not need access to another private repository to understand this ledger:
+public source URLs and the relevant scripts in this repository are used instead
+of internal filesystem paths.
 
-## Bulk (formal synonym) — abundant, saturates cross-lingual
+## Source families
 
-| id | source | how obtained | file | rows | license | notes |
-|----|--------|--------------|------|-----:|---------|-------|
-| icd-loinc | 衛福部 ICD-10-CM/PCS 中文版 + LOINC-NHI | hygieia local | `core/data/icd10_cm_2023.csv.gz` 等 | 63,529 | gov public / LOINC | zh↔en cross-lingual pairs |
-| snomed-syn | SNOMED CT description synonyms | hygieia local | `core/data/terminology_sources/snomed/description.csv.gz` | 44,973 | **SNOMED CT license (UMLS/UTS)** | en synonym→FSN, high-signal subset |
+### Specialized clinical language (surface → canonical)
 
-## Not used / dropped (recorded so they aren't re-attempted blindly)
-- iTaigi 2,500-seed expansion — process kept dying mid-run; 1,288 base run already folded in.
-- icd_term_bridge.csv.gz (204k) — token-level alignment noise ("abandonment→照顧或"), unusable.
-- Common Crawl — the right web-scale corpus for the apposition pattern, but a
-  petabyte S3/Athena/Spark project; deferred. Targeted TW-domain crawl is the
-  lighter substitute (rsroc above; extend to more hospital 衛教 domains next).
+| id | source | public source / acquisition | mined rows | rights status | use and notes |
+|----|--------|-----------------------------|-----------:|---------------|---------------|
+| moe-twblg | 教育部臺灣台語常用詞辭典 | [g0v/moedict-data-twblg](https://github.com/g0v/moedict-data-twblg), open-data dump | 778 | MOE open-data terms apply | Taigi Han text, Tâi-lô, and Mandarin definitions; 778 medical candidates filtered from 14,489 entries |
+| itaigi | iTaigi 愛台語 | [itaigi.tw](https://itaigi.tw/), public platform data queried by keyword | 1,288 | Source-specific CC/publication terms require verification before redistribution | Crowd-contributed Taigi readings and votes |
+| slang-blog | Taiwanese clinical slang articles | [陳志金「巷子內醫療用語」](https://snore123.blogspot.com/2019/05/medword.html), [udn article](https://blog.udn.com/ptsafetyrm/3771916), and a Vocus article | 62 | Third-party copyright; no raw redistribution permission recorded | Short surface/canonical facts such as colloquialisms and abbreviations were extracted, not the articles |
+| abbr-pdf | Hospital abbreviation lists and nursing teaching material | Publicly accessible hospital/school PDF documents; extracted with `pdftotext` or OCR | 398 | Hospital/author copyright; no raw redistribution permission recorded | Abbreviation pairs only; source PDFs contained layout noise. Exact source manifests should be retained with the private research data |
+| wiki-redirect | Chinese Wikipedia redirects | [MediaWiki API](https://www.mediawiki.org/wiki/API:Redirects) | 284 | CC BY-SA; attribution/share-alike obligations apply | Medical aliases mapped to article titles |
+| wiki-appos | Chinese Wikipedia introductory text | [MediaWiki API](https://www.mediawiki.org/wiki/Extension:TextExtracts) plus apposition patterns | 371 | CC BY-SA; attribution/share-alike obligations apply | Phrases such as 又稱／俗稱／簡稱／縮寫為 yielded clinical abbreviation pairs |
+| rsroc-weiei | 中華民國放射線醫學會衛教文章 | [rsroc.org.tw knowledge pages](https://rsroc.org.tw/knowledge/) | 34 | Society copyright; no raw redistribution permission recorded | Short factual appositions for imaging abbreviations such as LDCT, CTA, RFA, and TACE; articles are not redistributed |
 
-## Open-source caveat (carried from core/data/README)
-Bulk gov/CC/open-licensed parts are redistributable; the **abbr-pdf / slang-blog
-/ rsroc** raw text is third-party copyright — release the *trained embedder
-weights* (derived work), not the raw pairs, unless per-source consent obtained.
+### Formal terminology
 
-## Model produced from these corpora (v2, 2026-07-18)
+| id | source | public source / acquisition | mined rows | rights status | use and notes |
+|----|--------|-----------------------------|-----------:|---------------|---------------|
+| icd-loinc | MOHW ICD-10-CM/PCS Chinese releases and LOINC/NHI terminology | Obtain the current releases from the respective MOHW/NHI publication channels and [LOINC](https://loinc.org/downloads/); this repository contains the transformation pipeline, not WeeMed's private source cache | 63,529 | Government-data terms and the [LOINC licence](https://loinc.org/license/) apply independently | Chinese/English cross-lingual terminology pairs |
+| snomed-syn | SNOMED CT description synonyms | Obtain a licensed release through [SNOMED International](https://www.snomed.org/get-snomed) | 44,973 | SNOMED CT Affiliate Licence; not an unrestricted open-data corpus | English synonym → fully specified name; generated pairs are not distributed here |
 
-- **Base**: CODER (`GanjinZero/coder_all`, Apache-2.0), CLS pooler, BERT-base 768d.
-- **Train**: 119,242 pairs = specialized 1,652×8 (upsampled) + bulk 108,502;
-  InfoNCE / in-batch negatives, 4 epochs, RTX 4080.
-- **Held-out (247 specialized, 500 xling), never trained on:**
-  | | base | v2 fp32 | v2 int8 |
-  |---|---|---|---|
-  | specialized top1 | 0.279 | 0.453 | 0.433 |
-  | specialized top5 | 0.429 | 0.628 | 0.615 |
-  | xling top1 | 0.708 | 0.978 | — |
-- **Deployable**: `coder_tw_v2_int8.onnx` 178.7 MB (25% of fp32), CPU inference, fits 2 GB tier.
-- **Honest limits**: specialized top1 0.43 = usable for a suggest-with-review tier,
-  not autonomous. Chinese colloquial signal is web-scale-sparse (see Common Crawl
-  note); the gains came mostly from apposition-mined clinical abbreviations.
+## What was not used
+
+- The iTaigi 2,500-seed expansion was abandoned after repeated incomplete runs;
+  the 1,288-row base extraction is the recorded source.
+- `icd_term_bridge` (approximately 204k rows) was dropped because token-level
+  alignment produced invalid semantic pairs such as `abandonment → 照顧或`.
+- Common Crawl was not used. It was considered for web-scale apposition mining,
+  then deferred in favour of targeted Taiwanese clinical sources.
+
+## Third-party copyright and release posture
+
+Open access is not the same as an open licence, and withholding raw pairs does
+not by itself establish that model training is authorised or is fair use.
+Likewise, applying Apache-2.0 to model code or weights does not grant rights in
+upstream material.
+
+The three explicitly copyright-restricted source groups above contributed 494
+mined rows in total:
+
+| source groups | rows | share of the historical 119,242-pair CODER-TW mixture |
+|---------------|-----:|-------------------------------------------------------:|
+| slang-blog + abbr-pdf + rsroc-weiei | 494 | approximately 0.41% before training-time resampling |
+
+That low aggregate share, the extraction of short factual terminology rather
+than article text, the non-generative nature of an embedding model, and the lack
+of a reading substitute for the source works are relevant facts in a
+source-specific copyright assessment. They are not a blanket legal conclusion.
+The assessment must also consider how much and what qualitative portion was
+taken from each individual work, the applicable terms, any training-time
+resampling, and market effect.
+
+Accordingly:
+
+- raw third-party pairs and source documents are not distributed in this
+  repository;
+- each source still requires its own licence, permission, or documented legal
+  assessment before reuse in a new training run;
+- redistributors must independently comply with the MOE, CC BY-SA, LOINC, and
+  SNOMED terms that apply to their inputs; and
+- this provenance record is factual disclosure, not legal advice or a warranty
+  of non-infringement.
+
+## Current released model: IlhaEmbed
+
+The released model is **IlhaEmbed**, not CODER-TW.
+
+- **Base:** IBM Granite ModernBERT, Apache-2.0.
+- **Method:** contrastive training plus relational knowledge distillation over
+  Taiwanese clinical terminology, followed by vocabulary pruning and INT8
+  quantisation.
+- **Published artefact:** [`weemed/IlhaEmbed`](https://huggingface.co/weemed/IlhaEmbed),
+  384 dimensions, 38.5 MB INT8 ONNX.
+- **Current evaluation and limitations:** see [`MODEL-CARD.md`](MODEL-CARD.md).
+- **Reproducible pipeline and research history:** see [`README.md`](README.md)
+  and [`intake-embedder/EXPERIMENTS.md`](intake-embedder/EXPERIMENTS.md).
+
+The exact released-artifact recipe, evaluation split, and checksums belong in
+the model card and experiment log rather than being duplicated here. This file
+is the source-provenance ledger.
+
+## Historical experiment: CODER-TW v2 (2026-07-18)
+
+The following result is retained only as research history. It does **not**
+describe the current IlhaEmbed checkpoint.
+
+- **Base:** CODER (`GanjinZero/coder_all`, Apache-2.0), CLS pooling,
+  BERT-base 768d.
+- **Training mixture:** 119,242 pairs: 1,652 specialized pairs resampled eight
+  times plus 108,502 formal terminology pairs; InfoNCE/in-batch negatives,
+  four epochs.
+- **Held-out result:** specialized top-1 0.453 fp32 / 0.433 int8;
+  specialized top-5 0.628 fp32 / 0.615 int8.
+- **Historical artifact:** `coder_tw_v2_int8.onnx`, 178.7 MB.
+
+CODER-TW was a predecessor and benchmark in the development record. References
+to it must not be read as the architecture, size, licence lineage, or evaluation
+result of IlhaEmbed.

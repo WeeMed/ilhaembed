@@ -11,7 +11,7 @@ import onnxruntime as ort
 from transformers import AutoTokenizer
 from bench_all import load_jargon, retrieval_accuracy
 
-MODEL_DIR = os.path.expanduser("~/med-embed/coder-tw-onnx")
+MODEL_DIR = os.path.expanduser(os.environ.get("CODER_TW_MODEL_DIR", "./models/coder-tw-onnx"))
 ONNX = os.path.join(MODEL_DIR, "model.onnx")
 
 rss = lambda: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024

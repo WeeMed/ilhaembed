@@ -34,8 +34,8 @@ import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer
 
 HERE = Path(__file__).resolve().parent
-RESEARCH_DATA = HERE.parent / "data"
-HYGIEIA_DATA = Path(os.environ.get("HYGIEIA_DATA", str(HERE / "codesystems")))
+RESEARCH_DATA = Path(os.environ.get("ILHAEMBED_RESEARCH_DATA", str(HERE.parent / "data")))
+TERMINOLOGY_DATA = Path(os.environ.get("ILHAEMBED_TERMINOLOGY_DATA", str(HERE.parent / "terminology")))
 BASE = os.environ.get("BASE_MODEL", "BAAI/bge-small-zh-v1.5")
 OUT = Path(os.environ.get("OUT_DIR", str(HERE / "sapbert-small")))
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
@@ -72,7 +72,7 @@ def build_groups() -> dict[str, set[str]]:
         ("icd10_pcs_2023.csv.gz", "pcs"),
         ("loinc_nhi.csv.gz", "loinc"),
     ]:
-        for row in read_gz(HYGIEIA_DATA / name):
+        for row in read_gz(TERMINOLOGY_DATA / name):
             code = (row.get("code") or "").strip()
             if not code:
                 continue
@@ -103,7 +103,7 @@ def build_groups() -> dict[str, set[str]]:
     # many-to-one: every product licensed for an active ingredient is another real way that concept
     # is written. Measured at 7.54 surfaces per ingredient against 2.16 for everything else, which is
     # the structure a group-based objective needs and previously did not have.
-    path = HYGIEIA_DATA / "fda_drugs.csv.gz"
+    path = TERMINOLOGY_DATA / "fda_drugs.csv.gz"
     if path.exists():
         with gzip.open(path, "rt", encoding="utf-8") as handle:
             for row in csv.DictReader(handle):

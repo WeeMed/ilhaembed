@@ -14,12 +14,10 @@ Output: snomed_syn_pairs.tsv (surface<TAB>canonical<TAB>source)
 """
 import csv
 import gzip
-import os
 import re
+import argparse
+from pathlib import Path
 
-DESC = os.path.expanduser(
-    "~/Workspace/weemed-ai/hygieia/core/data/terminology_sources/snomed/description.csv.gz")
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "snomed_syn_pairs.tsv")
 FSN = "900000000000003001"
 SYN = "900000000000013009"
 _tag = re.compile(r"\s*\([^)]*\)\s*$")   # trailing "(disorder)" etc.
@@ -41,8 +39,22 @@ def is_high_signal(surf, canon):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--description",
+        type=Path,
+        required=True,
+        help="licensed SNOMED description.csv.gz export",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(__file__).with_name("snomed_syn_pairs.tsv"),
+    )
+    args = parser.parse_args()
+
     concepts = {}  # concept_id -> {"fsn": str, "syns": [str]}
-    with gzip.open(DESC, "rt") as f:
+    with gzip.open(args.description, "rt") as f:
         for r in csv.DictReader(f):
             cid = r["concept_id"]; term = r["term"]; typ = r["type_id"]
             c = concepts.setdefault(cid, {"fsn": None, "syns": []})
@@ -63,7 +75,8 @@ def main():
             if is_high_signal(s, canon) and (s, canon) not in seen:
                 seen.add((s, canon)); pairs.append((s, canon))
 
-    with open(OUT, "w", newline="") as f:
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open("w", newline="") as f:
         w = csv.writer(f, delimiter="\t")
         w.writerow(["surface", "canonical", "source"])
         w.writerows((s, c, "snomed-syn") for s, c in pairs)

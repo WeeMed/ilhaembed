@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train the intake embedder for the decision production actually makes.
+"""Historical experiment: train a semantic-routing encoder.
 
 Base is `BAAI/bge-small-zh-v1.5`, the model the importer already runs. That is a deliberate choice,
 not inertia: it is 512-dimensional and small enough to quantize to ~23 MB, which keeps it inside the
@@ -38,10 +38,10 @@ import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer
 
 HERE = Path(__file__).resolve().parent
-DATA = HERE / "data"
-EVAL = HERE / "eval"
-RESEARCH_DATA = HERE.parent / "data"
-OUT = HERE / os.environ.get("RUN_NAME", "intake-embedder-v2")
+DATA = Path(os.environ.get("ILHAEMBED_TRAIN_DATA", str(HERE / "data")))
+EVAL = Path(os.environ.get("ILHAEMBED_EVAL_DATA", str(HERE / "eval")))
+RESEARCH_DATA = Path(os.environ.get("ILHAEMBED_RESEARCH_DATA", str(HERE.parent / "data")))
+OUT = HERE / os.environ.get("RUN_NAME", "semantic-routing-v2")
 BASE = os.environ.get("BASE_MODEL", "BAAI/bge-small-zh-v1.5")
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
 SEED = 42

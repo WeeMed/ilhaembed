@@ -1,0 +1,12 @@
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+
+# Generated corpora, model checkpoints, and evaluation results are local artifacts.
+data/
+results/
+models/
+*.onnx
+*.safetensors
+*.tsv

@@ -1,0 +1,31 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  public-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install evaluation dependencies
+        run: python -m pip install -r requirements-eval.txt
+
+      - name: Compile public Python sources
+        run: python -m compileall -q evaluation examples training research
+
+      - name: Exercise the released model
+        run: python evaluation/smoke_test.py

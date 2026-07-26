@@ -29,12 +29,12 @@ import os, csv, numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = ""  # force CPU; leave the GPU to whatever is training
 from sentence_transformers import SentenceTransformer
 
-D = os.path.expanduser("~/med-embed")
+D = os.path.expanduser(os.environ.get("ILHAEMBED_RESEARCH_ROOT", "~/med-embed"))
 MODELS = [
     ("IlhaEmbed (pruned 97M)", os.path.join(D, "ilha-embed-97m-pruned")),
-    ("bge-small-zh",           os.path.join(D, "intake-embedder/base-bge")),
-    ("jina-v2-base-zh",        os.path.join(D, "intake-embedder/base-jina")),
-    ("ckip-base",              os.path.join(D, "intake-embedder/base-ckip-base")),
+    ("bge-small-zh",           os.path.join(D, "models/base-bge")),
+    ("jina-v2-base-zh",        os.path.join(D, "models/base-jina")),
+    ("ckip-base",              os.path.join(D, "models/base-ckip-base")),
 ]
 # kind: "semantic" counts toward the macro; "translit" is a diagnostic shown but excluded.
 SRC = [("slang", "med_slang.tsv", 0, 2, "semantic"),

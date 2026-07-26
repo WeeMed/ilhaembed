@@ -34,7 +34,7 @@ from transformers import AutoModel, AutoTokenizer
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent / "data"
-BASE = os.environ.get("BASE_MODEL", os.path.expanduser("~/med-embed/bert-tiny-chinese-st"))
+BASE = os.environ.get("BASE_MODEL", "ckiplab/bert-tiny-chinese")
 OUT = Path(os.environ.get("OUT_DIR", str(HERE / "jargon-small")))
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
 

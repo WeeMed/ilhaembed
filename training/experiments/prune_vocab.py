@@ -36,7 +36,7 @@ import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer, BertTokenizerFast
 
 HERE = Path(__file__).resolve().parent
-DATA = HERE / "data"
+DATA = Path(os.environ.get("ILHAEMBED_TRAIN_DATA", str(HERE / "data")))
 BASE = os.environ.get("BASE_MODEL", "jinaai/jina-embeddings-v2-base-zh")
 OUT = Path(os.environ.get("OUT_DIR", str(HERE / "jina-zh-pruned")))
 

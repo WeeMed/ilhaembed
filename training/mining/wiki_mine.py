@@ -13,13 +13,13 @@ Output: wiki_pairs.tsv  (surface<TAB>canonical<TAB>source)
 """
 import csv
 import json
-import os
 import re
 import time
 import urllib.parse
 import urllib.request
+import argparse
+from pathlib import Path
 
-D = os.path.dirname(os.path.abspath(__file__))
 API = "https://zh.wikipedia.org/w/api.php"
 CJK = re.compile(r"[一-鿿]")
 CATS = [
@@ -69,35 +69,42 @@ def redirects_batch(titles):
     return pairs
 
 
-def seed_titles():
+def seed_titles(lexicon: Path | None, terminology_dir: Path | None):
     """Seed purely from guaranteed-medical Chinese terms: lexicon canonicals +
     short ICD-10-CM/PCS Chinese displays (common disease/procedure names likely
     to have wiki articles). No category crawl -- it returns list/subcat pages and
     injects non-medical noise."""
     import gzip
     titles = set()
-    DATA = os.path.expanduser("~/Workspace/weemed-ai/hygieia/core/data")
-    p = os.path.join(D, "unified_med_lexicon.tsv")
-    if os.path.exists(p):
-        for r in csv.DictReader(open(p), delimiter="\t"):
-            c = r["canonical_zh"].strip()
-            if CJK.search(c) and 2 <= len(c) <= 12:
-                titles.add(c)
-    for fn in ("icd10_cm_2023.csv.gz", "icd10_pcs_2023.csv.gz"):
-        fp = os.path.join(DATA, fn)
-        if not os.path.exists(fp):
-            continue
-        with gzip.open(fp, "rt") as f:
-            for r in csv.DictReader(f):
-                z = (r.get("display_zh") or "").strip()
-                # short, pure-CJK common names most likely to be wiki articles
-                if z and CJK.search(z) and 2 <= len(z) <= 8 and not re.search(r"[A-Za-z0-9]", z):
-                    titles.add(z)
+    if lexicon and lexicon.exists():
+        with lexicon.open(encoding="utf-8") as handle:
+            for r in csv.DictReader(handle, delimiter="\t"):
+                c = r["canonical_zh"].strip()
+                if CJK.search(c) and 2 <= len(c) <= 12:
+                    titles.add(c)
+    if terminology_dir:
+        for name in ("icd10_cm_2023.csv.gz", "icd10_pcs_2023.csv.gz"):
+            path = terminology_dir / name
+            if not path.exists():
+                continue
+            with gzip.open(path, "rt") as handle:
+                for r in csv.DictReader(handle):
+                    z = (r.get("display_zh") or "").strip()
+                    if z and CJK.search(z) and 2 <= len(z) <= 8 and not re.search(r"[A-Za-z0-9]", z):
+                        titles.add(z)
     return sorted(titles)
 
 
 def main():
-    seeds = seed_titles()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--lexicon", type=Path, help="TSV with a canonical_zh column")
+    parser.add_argument("--terminology-dir", type=Path, help="directory containing licensed ICD files")
+    parser.add_argument("--output", type=Path, default=Path(__file__).with_name("wiki_pairs.tsv"))
+    args = parser.parse_args()
+
+    seeds = seed_titles(args.lexicon, args.terminology_dir)
+    if not seeds:
+        parser.error("provide --lexicon and/or --terminology-dir with readable source data")
     print(f"seed titles: {len(seeds)}", flush=True)
     pairs, seen = [], set()
     for i in range(0, len(seeds), 50):
@@ -108,8 +115,8 @@ def main():
             print(f"  {i}/{len(seeds)} seeds -> {len(pairs)} pairs", flush=True)
         time.sleep(0.2)
 
-    out = os.path.join(D, "wiki_pairs.tsv")
-    with open(out, "w", newline="") as f:
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open("w", newline="") as f:
         w = csv.writer(f, delimiter="\t")
         w.writerow(["surface", "canonical", "source"])
         for s, c in pairs:

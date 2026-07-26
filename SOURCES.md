@@ -33,7 +33,7 @@ of internal filesystem paths.
 | id | source | public source / acquisition | mined rows | rights status | use and notes |
 |----|--------|-----------------------------|-----------:|---------------|---------------|
 | icd-loinc | MOHW ICD-10-CM/PCS Chinese releases and LOINC/NHI terminology | Obtain the current releases from the respective MOHW/NHI publication channels and [LOINC](https://loinc.org/downloads/); this repository contains the transformation pipeline, not WeeMed's private source cache | 63,529 | Government-data terms and the [LOINC licence](https://loinc.org/license/) apply independently | Chinese/English cross-lingual terminology pairs |
-| snomed-syn | SNOMED CT description synonyms | Obtain a licensed release through [SNOMED International](https://www.snomed.org/get-snomed) | 44,973 | SNOMED CT Affiliate Licence; not an unrestricted open-data corpus | English synonym → fully specified name; generated pairs are not distributed here |
+| snomed-syn | SNOMED CT description synonyms | Obtain a licensed release through [SNOMED International](https://www.snomed.org/get-snomed) | 44,973 | SNOMED CT Affiliate Licence; not an unrestricted open-data corpus | English synonym → Fully Specified Name (FSN), the unique concept label that includes a semantic tag such as `(disorder)` or `(procedure)`; generated pairs are not distributed here |
 
 ## What was not used
 
@@ -89,7 +89,7 @@ The released model is **IlhaEmbed**, not CODER-TW.
   384 dimensions, 38.5 MB INT8 ONNX.
 - **Current evaluation and limitations:** see [`MODEL-CARD.md`](MODEL-CARD.md).
 - **Reproducible pipeline and research history:** see [`README.md`](README.md)
-  and [`intake-embedder/EXPERIMENTS.md`](intake-embedder/EXPERIMENTS.md).
+  and [`docs/research/EXPERIMENTS.md`](docs/research/EXPERIMENTS.md).
 
 The exact released-artifact recipe, evaluation split, and checksums belong in
 the model card and experiment log rather than being duplicated here. This file

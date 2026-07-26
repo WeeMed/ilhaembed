@@ -11,13 +11,13 @@ Output: appos_pairs.tsv (surface<TAB>canonical<TAB>source)
 """
 import csv
 import gzip
-import os
 import re
 import time
 import urllib.parse
 import urllib.request
+import argparse
+from pathlib import Path
 
-D = os.path.dirname(os.path.abspath(__file__))
 API = "https://zh.wikipedia.org/w/api.php"
 CJK = re.compile(r"[一-鿿]")
 
@@ -41,22 +41,23 @@ def api(params):
     return {}
 
 
-def seed_titles():
+def seed_titles(lexicon: Path | None, terminology_dir: Path | None):
     titles = set()
-    DATA = os.path.expanduser("~/Workspace/weemed-ai/hygieia/core/data")
-    p = os.path.join(D, "unified_med_lexicon.tsv")
-    if os.path.exists(p):
-        for r in csv.DictReader(open(p), delimiter="\t"):
-            c = r["canonical_zh"].strip()
-            if CJK.search(c) and 2 <= len(c) <= 12 and not re.search(r"[A-Za-z0-9]", c):
-                titles.add(c)
-    fp = os.path.join(DATA, "icd10_cm_2023.csv.gz")
-    if os.path.exists(fp):
-        with gzip.open(fp, "rt") as f:
-            for r in csv.DictReader(f):
-                z = (r.get("display_zh") or "").strip()
-                if z and CJK.search(z) and 2 <= len(z) <= 6 and not re.search(r"[A-Za-z0-9]", z):
-                    titles.add(z)
+    if lexicon and lexicon.exists():
+        with lexicon.open(encoding="utf-8") as handle:
+            rows = csv.DictReader(handle, delimiter="\t")
+            for r in rows:
+                c = r["canonical_zh"].strip()
+                if CJK.search(c) and 2 <= len(c) <= 12 and not re.search(r"[A-Za-z0-9]", c):
+                    titles.add(c)
+    if terminology_dir:
+        path = terminology_dir / "icd10_cm_2023.csv.gz"
+        if path.exists():
+            with gzip.open(path, "rt") as handle:
+                for r in csv.DictReader(handle):
+                    z = (r.get("display_zh") or "").strip()
+                    if z and CJK.search(z) and 2 <= len(z) <= 6 and not re.search(r"[A-Za-z0-9]", z):
+                        titles.add(z)
     return sorted(titles)
 
 
@@ -77,7 +78,15 @@ def extract_aliases(title, text):
 
 
 def main():
-    seeds = seed_titles()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--lexicon", type=Path, help="TSV with a canonical_zh column")
+    parser.add_argument("--terminology-dir", type=Path, help="directory containing icd10_cm_2023.csv.gz")
+    parser.add_argument("--output", type=Path, default=Path(__file__).with_name("appos_pairs.tsv"))
+    args = parser.parse_args()
+
+    seeds = seed_titles(args.lexicon, args.terminology_dir)
+    if not seeds:
+        parser.error("provide --lexicon and/or --terminology-dir with readable source data")
     print(f"seed medical titles: {len(seeds)}", flush=True)
     pairs, seen = [], set()
     B = 20
@@ -96,8 +105,8 @@ def main():
             print(f"  {i}/{len(seeds)} -> {len(pairs)} pairs", flush=True)
         time.sleep(0.2)
 
-    out = os.path.join(D, "appos_pairs.tsv")
-    with open(out, "w", newline="") as f:
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open("w", newline="") as f:
         w = csv.writer(f, delimiter="\t")
         w.writerow(["surface", "canonical", "source"])
         for s, c in pairs:

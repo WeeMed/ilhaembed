@@ -132,7 +132,7 @@ Measured on this published artifact, with a 110-surface register:
 | Taigi-semantic | 0.929 | **0.929** — unchanged |
 | size | 38.5 MB | **38.5 MB** + a few KB |
 
-Concretely, on a 20-concept probe the base int8 model returns 頭部電腦斷層 for `L-CT` (cos 0.805 — wrong, it is a *lung* screen) and 糖尿病 for 鈣化 (cos 0.384 — wrong). With the memory both ground at 1.000, while 高血壓 / 糖尿病 / 上呼吸道感染 / 心肌梗塞 pass through untouched. `intake-embedder/concept_memory.py` in the repo is a runnable version of exactly this.
+Concretely, on a 20-concept probe the base int8 model returns 頭部電腦斷層 for `L-CT` (cos 0.805 — wrong, it is a *lung* screen) and 糖尿病 for 鈣化 (cos 0.384 — wrong). With the memory both ground at 1.000, while 高血壓 / 糖尿病 / 上呼吸道感染 / 心肌梗塞 pass through untouched. [`examples/concept_memory.py`](examples/concept_memory.py) is a runnable reference implementation.
 
 **Build the memory's keys through the same call your queries use.** This model's output depends on the batch a text was embedded in, because a batch pads to its longest member and the padding reaches the real tokens' outputs: the same string embedded inside a large batch and embedded alone are only ~0.88–0.97 similar. Mix the two paths and an exact match scores like a near-miss, and τ quietly stops meaning what it says.
 
@@ -144,7 +144,10 @@ This is a tool for semantic representation, not a diagnostic system. It offers l
 
 ## License
 
-Apache-2.0. Base model: IBM Granite (Apache-2.0). Training-pair sources are listed in `SOURCES.md`. What we release is the trained weights, a distributable derivative; the raw third-party pairs are not included.
+Repository code and released weights are identified as Apache-2.0. Base model: IBM Granite
+(Apache-2.0). Training-pair sources and their separate rights status are listed in
+[`SOURCES.md`](SOURCES.md). Raw third-party pairs are not included. The model licence does not
+grant rights in upstream material or replace source-specific permission and legal review.
 
 ---
 
@@ -264,7 +267,7 @@ def ground(fragment, tau=0.95):
 | Taigi-semantic | 0.929 | **0.929** —— 沒退 |
 | 體積 | 38.5 MB | **38.5 MB** ＋幾 KB |
 
-具體一點：在一個 20 個概念的探針上，底座 int8 把 `L-CT` 讀成頭部電腦斷層（cos 0.805，錯——那是**肺部**篩檢）、把鈣化讀成糖尿病（cos 0.384，錯）。加上記憶之後兩個都以 1.000 接住，而高血壓／糖尿病／上呼吸道感染／心肌梗塞則原樣通過。repo 裡的 `intake-embedder/concept_memory.py` 就是這段的可執行版本。
+具體一點：在一個 20 個概念的探針上，底座 int8 把 `L-CT` 讀成頭部電腦斷層（cos 0.805，錯——那是**肺部**篩檢）、把鈣化讀成糖尿病（cos 0.384，錯）。加上記憶之後兩個都以 1.000 接住，而高血壓／糖尿病／上呼吸道感染／心肌梗塞則原樣通過。[`examples/concept_memory.py`](examples/concept_memory.py) 是可執行的參考實作。
 
 **記憶的 key 要用跟 query 同一個呼叫路徑建。** 這個模型的輸出會受它所在的 batch 影響——batch 會 pad 到最長的那一筆，而 padding 會影響到真實 token 的輸出：同一個字串放在大 batch 裡跟單獨嵌入，相似度只有 ~0.88–0.97。兩條路徑混用，完全相同的字串會拿到近似命中的分數，τ 就靜靜地失去了它字面上的意思。
 
@@ -276,4 +279,4 @@ def ground(fragment, tau=0.95):
 
 ## 授權
 
-Apache-2.0。基礎模型 IBM Granite（Apache-2.0）。訓練配對的來源記在 `SOURCES.md`。釋出的是訓練後的權重（可散佈的衍生成果），原始的第三方配對不隨附。
+Repo 程式碼與釋出權重標示為 Apache-2.0，基礎模型 IBM Granite 也是 Apache-2.0。訓練配對來源及其各自的權利狀態記在 [`SOURCES.md`](SOURCES.md)。原始第三方配對不隨附；模型授權不會授予上游素材的權利，也不能取代逐一來源的許可與法律審查。

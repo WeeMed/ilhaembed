@@ -1,10 +1,13 @@
-# Intake embedder — experiment log
+# IlhaEmbed — research and experiment log
 
 Running record of what was tried, what the evidence said, and what changed as a result. Entries are
 append-only: a superseded conclusion stays, with the evidence that overturned it, because the
 reasoning that failed is the part that is expensive to rediscover.
 
-Model naming: `intake-embedder` is the model trained for hygieia's own intake decisions.
+Early entries use the internal historical name `intake-embedder`. That name describes the
+original product experiment, not the current public model or repository structure. The released
+model is IlhaEmbed; historical names below are preserved only where needed to interpret recorded
+runs.
 `CODER-TW` (see `../README.md`) is the earlier surface-form/Taigi model; it remains the comparison
 baseline, not a dependency.
 
@@ -45,7 +48,8 @@ them adjacent. Character overlap is a lexical accident; that it currently drives
 
 ## 2026-07-18 — Data: what the repo already contains, and what it does not
 
-**Found already shipped in `hygieia/core/data/`** (no acquisition needed):
+**Available to the original experiment through its licensed terminology cache**
+(the cache is not part of this public repository):
 
 | Source | Rows | Usable as | Chinese |
 |---|---:|---|---|
@@ -636,8 +640,8 @@ Taigi-colloquial → standard-Han-concept (Han→Han, semantic) set.
 
 ## 2026-07-24 (same day) — the real Taigi-semantic register: `taigi_semantic_register.tsv`
 
-Built the benchmark the entry above named as missing. Built once, at `intake-embedder/data/`
-— not a per-model artifact.
+Built the benchmark the entry above named as missing. It is one shared research
+dataset, not a per-model artifact, and is not redistributed in this repository.
 
 **Distinction that matters (do not repeat the earlier mistake):** `taigi_med_lexicon.tsv` maps
 Han → Tâi-lô **romanization** (中風 → tiong-hong) — a transliteration task, correctly scored ~0 as

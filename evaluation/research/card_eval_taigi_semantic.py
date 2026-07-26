@@ -19,12 +19,12 @@ Two provenance families, both retained (see data file's `provenance`/`confidence
                         body part/procedure/drug/facility/role -- proverbs, food, kinship, and
                         general vocabulary excluded even when the vote count was strong).
   * internal-narrative -- a small (7-pair) subset mined from a proprietary, non-public clinical
-                        case-narrative corpus; not part of this public release (see the top-level
-                        README's "what's here vs. what's commercial" section).
+                        case-narrative corpus; not part of this public release (see
+                        docs/REPOSITORY.md).
 
 Known gap (documented, not silently absent): a larger, professionally curated sovereignty corpus
 is the intended primary source for this register; the application to access it is still pending
-review and could not be used here. See intake-embedder/EXPERIMENTS.md for what it will add.
+review and could not be used here. See docs/research/EXPERIMENTS.md for what it will add.
 
 CPU-only on purpose (CUDA_VISIBLE_DEVICES="") so this can run without a GPU.
 
@@ -36,13 +36,13 @@ import os, csv, numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = ""  # force CPU; leave the GPU to whatever is training
 from sentence_transformers import SentenceTransformer
 
-D = os.path.expanduser("~/med-embed")
+D = os.path.expanduser(os.environ.get("ILHAEMBED_RESEARCH_ROOT", "~/med-embed"))
 REG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "taigi_semantic_register.tsv")
 MODELS = [
     ("IlhaEmbed (pruned 97M)", os.path.join(D, "ilha-embed-97m-pruned")),
-    ("bge-small-zh",           os.path.join(D, "intake-embedder/base-bge")),
-    ("jina-v2-base-zh",        os.path.join(D, "intake-embedder/base-jina")),
-    ("ckip-base",              os.path.join(D, "intake-embedder/base-ckip-base")),
+    ("bge-small-zh",           os.path.join(D, "models/base-bge")),
+    ("jina-v2-base-zh",        os.path.join(D, "models/base-jina")),
+    ("ckip-base",              os.path.join(D, "models/base-ckip-base")),
 ]
 
 

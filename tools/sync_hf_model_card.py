@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import os
 import shutil
 import subprocess
 import sys
@@ -105,9 +106,11 @@ def publish_git(repo_id: str) -> None:
     """Publish through the normal Git credential manager without reading a token."""
     with tempfile.TemporaryDirectory(prefix="ilhaembed-hf-card-") as tmp:
         checkout = Path(tmp) / "model"
+        environment = {**os.environ, "GIT_LFS_SKIP_SMUDGE": "1"}
         subprocess.run(
             ["git", "clone", "--depth", "1", f"https://huggingface.co/{repo_id}", str(checkout)],
             check=True,
+            env=environment,
         )
         destination = checkout / "README.md"
         if destination.exists() and destination.read_bytes() == SOURCE.read_bytes():

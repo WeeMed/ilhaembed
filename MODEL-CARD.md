@@ -74,7 +74,7 @@ redistributed. The public repository states the runnable and non-published bound
 
 ### On Taigi, and why it is not folded into that number (nothing is hidden)
 
-A fourth set, `taigi_med_lexicon`, maps a Han term to its **Tâi-lô romanization** (中風 → tiong-hong). Every model, including this one, scores ~0.00 on it — and that is correct: mapping a Han term to a romanized spelling is a **transliteration** task, not semantic retrieval. It belongs to a romanization / ASR model, not a meaning embedder, so it is reported as a diagnostic and kept **out of the semantic macro**; averaging a transliteration score into a semantic benchmark would only produce a meaningless number. (An earlier version of this card called the ~0 a "self-match bug" — that was wrong; only 31/779 surfaces collide with the pool and those are already excluded. The ~0 is the task mismatch.)
+A fourth set, `taigi_med_lexicon`, maps a Han term to its **Tâi-lô romanization** (中風 → tiong-hong). Every model, including this one, scores approx. 0.00 on it — and that is correct: mapping a Han term to a romanized spelling is a **transliteration** task, not semantic retrieval. It belongs to a romanization / ASR model, not a meaning embedder, so it is reported as a diagnostic and kept **out of the semantic macro**; averaging a transliteration score into a semantic benchmark would only produce a meaningless number. (An earlier version of this card called the approx. 0 a "self-match bug" — that was wrong; only 31/779 surfaces collide with the pool and those are already excluded. The approx. 0 is the task mismatch.)
 
 The embedder's **Taigi clinical capability is already in the numbers above**: the `slang` register *is* that capability — Taiwanese clinical colloquialisms (皮蛇 for shingles, 檳榔 for betel-nut chewing) mapped to their standard concepts, at 0.855 (fp32). A dedicated Taigi-colloquial → standard-Han-concept set (Han→Han, semantic) is the natural next benchmark to add.
 
@@ -225,7 +225,7 @@ int8 那欄是用 onnxruntime 在這裡發佈的那顆 artifact 上原生量的�
 
 ### 關於台語，以及為什麼它不併進上面那個數字（沒有藏任何東西）
 
-還有第四個集 `taigi_med_lexicon`，它是把漢字詞對到它的**台羅羅馬字**（中風 → tiong-hong）。所有模型（包含這個）在上面都是 ~0.00 —— 而這是**對的**：把漢字對到羅馬拼寫是**音譯**任務、不是語意檢索，那是羅馬字／ASR 模型的工作、不是語意 embedder 的工作。所以它只當診斷用、**不併進語意 macro**；把音譯分數平均進語意 benchmark 只會得到一個沒有意義的數字。（這張 card 之前把那個 ~0 稱作「self-match bug」，那是錯的；只有 31/779 的表面詞會撞到池子、而且早就被排除，~0 是任務錯配。）
+還有第四個集 `taigi_med_lexicon`，它是把漢字詞對到它的**台羅羅馬字**（中風 → tiong-hong）。所有模型（包含這個）在上面都是約 0.00 —— 而這是**對的**：把漢字對到羅馬拼寫是**音譯**任務、不是語意檢索，那是羅馬字／ASR 模型的工作、不是語意 embedder 的工作。所以它只當診斷用、**不併進語意 macro**；把音譯分數平均進語意 benchmark 只會得到一個沒有意義的數字。（這張 card 之前把那個約 0 稱作「self-match bug」，那是錯的；只有 31/779 的表面詞會撞到池子、而且早就被排除，約 0 是任務錯配。）
 
 這個模型的**台語臨床能力其實就在上面的數字裡**：`slang` 語域正是它 —— 台灣臨床口語（皮蛇＝帶狀皰疹、檳榔＝嚼檳榔）對到標準概念，fp32 0.855。之後自然要補的是一個專門的「台語口語 → 標準漢字概念」（漢字→漢字、語意）測試集。
 

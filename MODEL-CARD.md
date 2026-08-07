@@ -248,7 +248,23 @@ model = SentenceTransformer("weemed/IlhaEmbed")
 model.encode(["皮蛇", "L-CT", "定期心內門診-戒菸"])
 ```
 
+### 帶 Context 的拉丁縮寫與多義詞動態解歧義
+
+純拉丁字母縮寫（如 `MIF`、`CEA`、`eGFR`、`CBC`）以及高度多義詞（如 `鈣化`）本身無漢字特徵且缺乏獨占上下文。透過傳入業務欄位 Context 字串（例如 `f"{column_hint} {fragment}"`），即可在完全不依賴硬編碼字典的情況下精確判讀：
+
+```python
+# 帶入欄位上下文 Context 的推論
+query = "hi-checkup 健檢報告 檢體未交 MIF"
+query_vec = model.encode(query, normalize_embeddings=True)
+
+# 動態精確對齊至「檢體未交與寄生蟲鏡檢」(得分 ~0.50+，大幅領先勝差 +0.15)
+```
+
 維度 384，最長 32 個 token。詞表 25.5k（剪過，只留繁體中文和臨床會用到的）。大小 38.5 MB（INT8 ONNX）或 152 MB（fp32 safetensors）。
+
+## 資料來源與開放資料標註 (Data Provenance)
+
+IlhaEmbed 的蒸餾知識訓練訊號包含數位發展部 (MODA) 開放資料平台之「國教院 13 套學術醫療名詞庫」 (`taic.moda.gov.tw`，共 111,386 筆醫療概念)。原始語料庫遵循政府資料開放授權條款 (MODA Open Data Terms §3.1)。
 
 ## 怎麼做的
 

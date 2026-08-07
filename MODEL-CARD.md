@@ -97,7 +97,23 @@ model = SentenceTransformer("weemed/IlhaEmbed")
 model.encode(["皮蛇", "L-CT", "定期心內門診-戒菸"])
 ```
 
+### Context-Conditioned Acronym & Polysemous Classification
+
+Short pure-Latin acronyms (`MIF`, `CEA`, `eGFR`, `CBC`) and polysemous terms (`鈣化`) carry no Han characters and can be ambiguous in isolation. Passing an operational domain context string (e.g., `f"{column_hint} {fragment}"`) resolves ambiguity without hardcoded dictionaries:
+
+```python
+# Context-conditioned query embedding
+query = "hi-checkup 健檢報告 檢體未交 MIF"
+query_vec = model.encode(query, normalize_embeddings=True)
+
+# Resolves accurately to specimen tracking (score ~0.50+, margin +0.15 over runner-up)
+```
+
 384 dimensions, up to 32 tokens. Vocab 25.5k (pruned to Traditional Chinese and clinical). Size 38.5 MB (INT8 ONNX) or 152 MB (fp32 safetensors).
+
+## Data Provenance & Open Data
+
+IlhaEmbed incorporates training signals distilled from public Traditional Chinese medical terminology datasets, including the Ministry of Digital Affairs (MODA) 13-set Academic Medical Terminology corpus (`taic.moda.gov.tw`, 111,386 concepts). Raw training corpora remain subject to their respective upstream open government data licences (MODA Open Data Terms §3.1).
 
 ## How it was built
 

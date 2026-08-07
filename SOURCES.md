@@ -32,6 +32,7 @@ of internal filesystem paths.
 
 | id | source | public source / acquisition | mined rows | rights status | use and notes |
 |----|--------|-----------------------------|-----------:|---------------|---------------|
+| moda-naer-13 | 數位發展部 / 國教院 13 套學術醫療名詞 | [taic.moda.gov.tw](https://taic.moda.gov.tw/), open-data dump | 111,386 | MODA Open Data Terms §3.1 apply | Traditional Chinese academic and clinical terminology pairs distilled for concept alignment |
 | icd-loinc | MOHW ICD-10-CM/PCS Chinese releases and LOINC/NHI terminology | Obtain the current releases from the respective MOHW/NHI publication channels and [LOINC](https://loinc.org/downloads/); this repository contains the transformation pipeline, not WeeMed's private source cache | 63,529 | Government-data terms and the [LOINC licence](https://loinc.org/license/) apply independently | Chinese/English cross-lingual terminology pairs |
 | snomed-syn | SNOMED CT description synonyms | Obtain a licensed release through [SNOMED International](https://www.snomed.org/get-snomed) | 44,973 | SNOMED CT Affiliate Licence; not an unrestricted open-data corpus | English synonym → Fully Specified Name (FSN), the unique concept label that includes a semantic tag such as `(disorder)` or `(procedure)`; generated pairs are not distributed here |
 

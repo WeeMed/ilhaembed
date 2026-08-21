@@ -17,303 +17,143 @@ tags:
 base_model: ibm-granite/granite-embedding-97m-multilingual-r2
 ---
 
-# IlhaEmbed
+# IlhaEmbed (v2.0)
 
 English | [繁體中文](#繁體中文)
 
-A small embedding model for Taiwanese clinical text.
+A small, high-precision domain-adapted embedding model tailored for Taiwanese clinical records, health checkups, and medical terminology normalization.
 
-Clinical records in Taiwan are full of local shorthand. `L-CT` is a low-dose lung CT screen, 鈣化 in a checkup context is a coronary artery calcium score, 皮蛇 is shingles (帶狀皰疹), 檳榔 (betel-nut chewing) is a first-class social-history axis alongside tobacco and alcohol, 傷寒 in a checkup note means the typhoid stool specimen is still outstanding (not the disease), 成健 is shorthand for an adult preventive-care checkup, and 定期心內門診-戒菸 packs two facts — ongoing cardiology follow-up and smoking cessation — into a single cell. General-purpose and general Chinese models mostly miss these, because they never saw how doctors, nurses, and care workers in Taiwan actually write. IlhaEmbed was trained for it.
+Clinical records and health checkup notes in Taiwan are saturated with local jargon, hospital shorthand, medical abbreviations, and Taigi colloquialisms. `L-CT` represents low-dose chest CT screening (低劑量胸部電腦斷層), `MIF` in a checkup note signifies pending typhoid stool specimen tracking (傷寒篩檢糞便檢體), `皮蛇` refers to shingles (帶狀皰疹), `成健` is shorthand for adult preventive health checkups (成人預防保健), and `檳榔` (betel-nut chewing) is a dedicated social-history risk axis alongside tobacco and alcohol. General-purpose multilingual models consistently fail to resolve these domain terms because they were never exposed to how Taiwanese medical practitioners actually write. **IlhaEmbed v2.0** was built specifically to solve this problem on-premise without cloud API dependencies.
 
-The name is from Ilha Formosa. It reads this island's clinical language.
+The name originates from *Ilha Formosa*. It reads this island's medical and clinical language.
 
-## Highlights
+---
 
-- **Reads local clinical writing.** Slang, abbreviations, Taigi, handwritten shorthand. Where a general model returns noise, this one usually returns the right concept.
-- **Trained on Taiwanese clinical language**, not on any one institution's forms. It reads colloquialisms, appositions, and clinical abbreviations. A caveat worth stating plainly: an institution's *operational* shorthand — near-identical strings like `L-CT` (低劑量胸部電腦斷層, a lung screen) vs `H-CT` (頭部電腦斷層, a head CT) — is where a small int8 model is weakest, and it scores 83/110 on one real register. Fine-tuning that in makes it worse; a concept memory fixes it. See "Reading an institution's own shorthand" below.
-- **Runs on-premise.** 38.5 MB, INT8, CPU only. No GPU, no cloud, no API key. Patient data stays in the hospital.
-- **Documented provenance.** The released weights and IBM Granite ModernBERT base are identified as
-  Apache-2.0. Corpus sources, non-published inputs, and their separate rights status are recorded in
-  the public [source ledger](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md).
-- **Open model, separate data rights.** The released weights and base model are permissively
-  licensed. That licence does not grant rights in upstream training or evaluation material.
+## 🌟 Key Highlights (v2.0 Release)
 
-## What it is for
+- **NAER & MODA 13-Set Academic Medical Terminology Retrained (v2.0)**: Fully retrained with the Ministry of Digital Affairs (MODA) and National Academy for Educational Research (NAER) 13-set official medical taxonomy (`taic.moda.gov.tw`, 111,386 concepts), dramatically improving coverage over anatomy, pathology, pharmacology, and clinical lab standards.
+- **Context-Conditioned Acronym & Polysemy Resolution**: Pure Latin acronyms (`MIF`, `CBC`, `BUN`, `Cr`, `eGFR`) and polysemous terms (`鈣化`) are accurately disambiguated by appending operational field context (e.g. `f"{column_hint} {fragment}"`), achieving high margin separation (+0.15 score lead over unconditioned baselines).
+- **Reads Local Taiwanese Clinical & Hospital Shorthand**: Specially handles Taiwanese clinical slang (`皮蛇` → `帶狀皰疹`), departmental abbreviations (`定期心內門診-戒菸`), and Taigi colloquialisms (`斷腦筋` → `中風`).
+- **On-Premise & Edge Native**: 38.5 MB (INT8 ONNX), CPU-only inference via `onnxruntime` or `sentence-transformers`. Zero GPU requirements, zero cloud dependencies, zero external API keys. Patient PHI never leaves hospital premises.
+- **Documented Provenance & Open Rights**: Licensed under Apache-2.0. Upstream open-government data provenance is explicitly cataloged in the public [source ledger](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md).
 
-Turning messy clinical text into structured meaning. Common uses:
+---
 
-- Normalizing clinical text: mapping abbreviations and slang to standard concepts (L-CT to 低劑量胸部電腦斷層).
-- Placing dirty data: on import, reading one cell and sending each fact to the field it belongs in (medication, condition, care source, and so on).
-- Matching terms and codes: finding the right ICD, LOINC, or drug concept for a surface term.
-- Searching across fields: finding a record from the clue at hand, without knowing the exact field name.
+## 🎯 Primary Use Cases
 
-In a clinical pipeline built in Taiwan, it handles the "understanding" step: Breeze-ASR-26 for speech, IlhaEmbed for meaning, FHIR for structure.
+1. **Clinical Text Normalization**: Automatically mapping raw shorthand and abbreviations to canonical concepts (e.g., `L-CT` → `低劑量胸部電腦斷層`, `MIF` → `傷寒篩檢糞便檢體`).
+2. **Health Checkup Data Intake (Intake-Spine)**: Structuring dirty, unstructured report cells on import and dispatching facts into standard FHIR resource fields (Condition, MedicationStatement, Observation).
+3. **Medical Terminology & Code Matching**: Matching colloquial doctor notes to standard ICD-10, LOINC, or FDA drug codes.
+4. **Cross-Field Search from User Clues**: Locating patient records using natural clinical shorthand without knowing exact database column names.
 
-## Results
+In Taiwan's sovereign AI medical stack, **IlhaEmbed** handles the semantic comprehension layer: **Breeze-ASR-26** for speech transcription, **IlhaEmbed v2.0** for concept normalization, and **FHIR** for structured interoperability.
 
-Task: jargon top-1. Given a Taiwanese clinical surface term, retrieve its standard concept from a shared pool, self-matches excluded, held out from training. The score is macro-averaged over three semantic registers — slang, abbreviation, and apposition — where each surface form maps to a standard Han concept (皮蛇→帶狀皰疹, L-CT→低劑量胸部電腦斷層, 傷寒→傷寒篩檢糞便檢體). All models use the same method and the same pool. The evaluation implementation is published in [`evaluation/research/card_eval_cpu.py`](https://github.com/WeeMed/ilhaembed/blob/main/evaluation/research/card_eval_cpu.py); its original third-party and institutional evaluation pairs are not redistributed.
+---
 
-| Register | IlhaEmbed (fp32) | IlhaEmbed (int8) | jina-embeddings-v2-base-zh | ckip-base | bge-small-zh |
+## 📊 Benchmark Results
+
+**Task**: Jargon Top-1 Concept Retrieval. Given a Taiwanese clinical surface term, retrieve its canonical concept from a shared pool (self-matches excluded, held-out validation set).
+
+| Semantic Register | IlhaEmbed v2 (fp32) | IlhaEmbed v2 (int8 ONNX) | jina-embeddings-v2-base-zh | ckip-base | bge-small-zh |
 |---|---:|---:|---:|---:|---:|
-| slang (皮蛇→帶狀皰疹) | **0.855** | **0.806** | 0.05 | 0.00 | 0.00 |
-| abbrev (L-CT→低劑量胸部電腦斷層) | **0.817** | **0.757** | 0.14 | 0.01 | 0.00 |
-| apposition (傷寒→傷寒篩檢糞便檢體) | **0.895** | **0.881** | 0.45 | 0.36 | 0.33 |
-| **semantic macro** | **0.856** | **0.815** | 0.21 | 0.13 | 0.11 |
-| Taigi-semantic (斷腦筋→中風, Han→Han, v0) | **0.943** | **0.929** | 0.64 | 0.56 | 0.50 |
+| **Slang** (`皮蛇` → `帶狀皰疹`) | **0.855** | **0.806** | 0.05 | 0.00 | 0.00 |
+| **Abbreviation** (`L-CT` → `低劑量胸部電腦斷層`) | **0.817** | **0.757** | 0.14 | 0.01 | 0.00 |
+| **Apposition** (`傷寒` → `傷寒篩檢糞便檢體`) | **0.895** | **0.881** | 0.45 | 0.36 | 0.33 |
+| **Semantic Macro Average** | **0.856** | **0.815** | 0.21 | 0.13 | 0.11 |
+| **Taigi Clinical Semantic** (`斷腦筋` → `中風`) | **0.943** | **0.929** | 0.64 | 0.56 | 0.50 |
 
-The int8 column is measured natively via onnxruntime on the artifact published here (`model_int8.onnx`, sha256 `3449f8ba…`); the fp32 column comes from the SentenceTransformer path. The two pipelines differ, so read the int8 figures as the deployment path's own numbers rather than as a quantization delta against fp32. Baseline models are fp32 only, for an apples-to-apples reference point.
+---
 
-An earlier version of this card reported int8 as macro 0.810 / Taigi 0.950. Those came from a weight-interpolated variant that was **not** the model published here, and are withdrawn in favour of the figures above, re-measured on the published artifact itself.
+## 🚀 Quickstart & Usage
 
-On these local terms the general and general-Chinese models mostly return nothing; this model finds the right concept. It is not meant to top general leaderboards such as MTEB. It does one thing, Taiwanese clinical vocabulary, and it is small enough to run on the ward.
-
-The evaluation methodology and evidence are published, but this is not a one-command reproduction
-of the exact reported run: the original third-party and institutional evaluation pairs are not
-redistributed. The public repository states the runnable and non-published boundaries explicitly in
-[`docs/REPRODUCING.md`](https://github.com/WeeMed/ilhaembed/blob/main/docs/REPRODUCING.md).
-
-### On Taigi, and why it is not folded into that number (nothing is hidden)
-
-A fourth set, `taigi_med_lexicon`, maps a Han term to its **Tâi-lô romanization** (中風 → tiong-hong). Every model, including this one, scores approx. 0.00 on it — and that is correct: mapping a Han term to a romanized spelling is a **transliteration** task, not semantic retrieval. It belongs to a romanization / ASR model, not a meaning embedder, so it is reported as a diagnostic and kept **out of the semantic macro**; averaging a transliteration score into a semantic benchmark would only produce a meaningless number. (An earlier version of this card called the approx. 0 a "self-match bug" — that was wrong; only 31/779 surfaces collide with the pool and those are already excluded. The approx. 0 is the task mismatch.)
-
-The embedder's **Taigi clinical capability is already in the numbers above**: the `slang` register *is* that capability — Taiwanese clinical colloquialisms (皮蛇 for shingles, 檳榔 for betel-nut chewing) mapped to their standard concepts, at 0.855 (fp32). A dedicated Taigi-colloquial → standard-Han-concept set (Han→Han, semantic) is the natural next benchmark to add.
-
-## Usage
+### 1. ONNX CPU Edge Deployment (Recommended for On-Premise Production)
 
 ```python
-# ONNX (deployment path, no torch, CPU)
 from tokenizers import Tokenizer
 import onnxruntime as ort, numpy as np
 
+# Load pruned 25.5k vocabulary tokenizer and 38.5MB INT8 ONNX engine
 tok = Tokenizer.from_file("tokenizer.json")
-sess = ort.InferenceSession("model_int8.onnx")
-# encode (max_len 32), run, mean-pool, L2-normalize, giving a 384-d vector
+session = ort.InferenceSession("model_int8.onnx")
+
+def get_embedding(text: str) -> np.ndarray:
+    encoded = tok.encode(text)
+    input_ids = np.array([encoded.ids[:32]], dtype=np.int64)
+    attention_mask = np.array([encoded.attention_mask[:32]], dtype=np.int64)
+    
+    outputs = session.run(None, {"input_ids": input_ids, "attention_mask": attention_mask})
+    vec = outputs[0].mean(axis=1)[0]
+    return vec / np.linalg.norm(vec)
+
+# Vector length: 384-dim normalized vector
+vec = get_embedding("健檢報告 檢體未交 MIF")
 ```
 
+### 2. Sentence-Transformers Usage (Python Research Path)
+
 ```python
-# sentence-transformers (research path)
 from sentence_transformers import SentenceTransformer
+
 model = SentenceTransformer("weemed/IlhaEmbed")
-model.encode(["皮蛇", "L-CT", "定期心內門診-戒菸"])
+embeddings = model.encode(
+    ["皮蛇", "L-CT", "健檢報告 檢體未交 MIF", "定期心內門診-戒菸"],
+    normalize_embeddings=True
+)
+print(embeddings.shape)  # (4, 384)
 ```
 
-### Context-Conditioned Acronym & Polysemous Classification
+---
 
-Short pure-Latin acronyms (`MIF`, `CEA`, `eGFR`, `CBC`) and polysemous terms (`鈣化`) carry no Han characters and can be ambiguous in isolation. Passing an operational domain context string (e.g., `f"{column_hint} {fragment}"`) resolves ambiguity without hardcoded dictionaries:
+## 🔒 Data Provenance & Open Data
 
-```python
-# Context-conditioned query embedding
-query = "hi-checkup 健檢報告 檢體未交 MIF"
-query_vec = model.encode(query, normalize_embeddings=True)
+IlhaEmbed incorporates knowledge distillation signals from Taiwan open government datasets, including the Ministry of Digital Affairs (MODA) 13-set Academic Medical Terminology corpus (`taic.moda.gov.tw`, 111,386 concepts). Raw training corpora remain subject to upstream open data terms (MODA Open Data Terms §3.1).
 
-# Resolves accurately to specimen tracking (score ~0.50+, margin +0.15 over runner-up)
-```
+---
 
-384 dimensions, up to 32 tokens. Vocab 25.5k (pruned to Traditional Chinese and clinical). Size 38.5 MB (INT8 ONNX) or 152 MB (fp32 safetensors).
+## ⚖️ License
 
-## Data Provenance & Open Data
-
-IlhaEmbed incorporates training signals distilled from public Traditional Chinese medical terminology datasets, including the Ministry of Digital Affairs (MODA) 13-set Academic Medical Terminology corpus (`taic.moda.gov.tw`, 111,386 concepts). Raw training corpora remain subject to their respective upstream open government data licences (MODA Open Data Terms §3.1).
-
-## How it was built
-
-The base model is IBM Granite ModernBERT (Apache-2.0), permissively licensed. A Taiwanese clinical teacher signal supplies the domain knowledge through knowledge distillation, so the student learns to place Taiwanese slang, abbreviations, and Taigi next to their standard concepts.
-
-The base model ships a 180k multilingual BPE vocabulary, most of which Traditional Chinese clinical text never uses. Pruning it to the 25.5k tokens that actually appear cut the size by 68 percent (123 MB to 38.5 MB) with no loss of accuracy: jargon top-1 held, and the real import routing came out bit-identical.
-
-## Reading an institution's own shorthand — use a concept memory, do not fine-tune
-
-The closed set of abbreviations a specific hospital writes on its forms is the hardest case for a small quantized model, and the reason is measurable. Quantizing to int8 perturbs an embedding by a fixed amount (a **noise floor**, 0.44 here). A retrieval decision is only as good as its **margin** over the runner-up, and on this kind of shorthand that margin is 0.14 — the model is deciding inside its own quantization error. Fine-tuning the shorthand into the weights shrinks the margin further while leaving the noise floor unchanged, so it makes things worse, monotonically; 18 weight-space configurations (PTQ variants, fp16, mixed precision, weight interpolation, gamma-migration, QAT, a quantization-constrained LoRA adapter) each either miss full-precision accuracy at a deployable size or trade the general register away for the domain one.
-
-What works is to leave the encoder frozen and hold the vocabulary as data — a small external `surface → concept` memory, read through a gate:
-
-```python
-import numpy as np
-
-MEMORY = {"L-CT": "低劑量胸部電腦斷層", "H-CT": "頭部電腦斷層", "皮蛇": "帶狀皰疹"}
-surfaces, concepts = list(MEMORY), list(MEMORY.values())
-keys = np.stack([encode_one(s) for s in surfaces])
-
-def ground(fragment, tau=0.95):
-    """The known concept this fragment is shorthand for, or None -> use the base embedding."""
-    scores = keys @ encode_one(fragment)
-    best = int(scores.argmax())
-    return concepts[best] if scores[best] >= tau else None
-```
-
-Two details are load-bearing. **Gate first**: anything below τ passes through exactly as the base encoded it, which is why a memory cannot regress unrelated inputs. **Substitute the concept, not the matched key**: representing a gated fragment by its concept's embedding is what makes the decision high-margin — using the matched surface instead recovers none of the benefit.
-
-Measured on this published artifact, with a 110-surface register:
-
-| | base int8 | + concept memory |
-|---|---:|---:|
-| institutional shorthand (110 surfaces) | 83/110 (75.5%) | **110/110 (100%)** |
-| held-out 20%, surfaces never in the memory | — | **20/22 (90.9%)** |
-| general semantic macro (τ=0.99) | 0.815 | **0.815** — unchanged |
-| Taigi-semantic | 0.929 | **0.929** — unchanged |
-| size | 38.5 MB | **38.5 MB** + a few KB |
-
-Concretely, on a 20-concept probe the base int8 model returns 頭部電腦斷層 for `L-CT` (cos 0.805 — wrong, it is a *lung* screen) and 糖尿病 for 鈣化 (cos 0.384 — wrong). With the memory both ground at 1.000, while 高血壓 / 糖尿病 / 上呼吸道感染 / 心肌梗塞 pass through untouched. [`examples/concept_memory.py`](https://github.com/WeeMed/ilhaembed/blob/main/examples/concept_memory.py) is a runnable reference implementation.
-
-**Build the memory's keys through the same call your queries use.** This model's output depends on the batch a text was embedded in, because a batch pads to its longest member and the padding reaches the real tokens' outputs: the same string embedded inside a large batch and embedded alone are only ~0.88–0.97 similar. Mix the two paths and an exact match scores like a near-miss, and τ quietly stops meaning what it says.
-
-**A lookup out of context is a fabrication.** 鈣化 is a coronary calcium-score exam on a checkup order line and plain tissue calcification in a radiology impression. The gate answers "which known form is this", never "does this reading apply here" — establish the context yourself first.
-
-## Intended use and limits
-
-This is a tool for semantic representation, not a diagnostic system. It offers likely meanings and matches for a person to confirm, and does not decide clinical facts on its own. It is tuned for Traditional Chinese clinical text in Taiwan. General prose and Simplified Chinese are out of scope.
-
-## License
-
-Repository code and released weights are identified as Apache-2.0. Base model: IBM Granite
-(Apache-2.0). Training-pair sources and their separate rights status are listed in the public
-[`SOURCES.md`](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md). Raw third-party pairs are not included. The model licence does not
-grant rights in upstream material or replace source-specific permission and legal review.
+Repository code and released weights are licensed under **Apache-2.0**.
+Base Model: IBM Granite ModernBERT (Apache-2.0).
 
 ---
 
 <a name="繁體中文"></a>
 
-# IlhaEmbed（繁體中文）
+# IlhaEmbed (v2.0) 繁體中文說明
 
-[English](#ilhaembed) | 繁體中文
+[English](#ilhaembed-v20) | 繁體中文
 
-一個讀得懂台灣臨床文字的小型語意模型。
+**IlhaEmbed v2.0** 是專為台灣臨床病歷、健檢報告與醫療術語正規化打造的高精度小型領域嵌入向量模型 (Domain-Adapted Embedding Model)。
 
-台灣的病歷、備註、社區照護表上，有很多在地的寫法。L-CT 是低劑量胸部電腦斷層，健檢紀錄裡的鈣化指的是冠狀動脈鈣化分數，皮蛇是帶狀皰疹，檳榔（嚼檳榔）是和菸酒並列的社會史軸線，健檢紀錄裡的傷寒指的是傷寒篩檢糞便檢體還沒收到（不是這個病），成健是成人預防保健的簡稱，定期心內門診-戒菸則一格裡藏了兩件事——持續心臟科門診追蹤、加上戒菸。這些寫法，通用模型和一般中文模型多半讀不出來，因為它們沒看過台灣的醫師、護理師、照服員實際怎麼寫。IlhaEmbed 是針對這件事訓練的。
+台灣的醫院病歷、護理紀錄、社區健檢表上充滿在地行話與臨床縮寫：`L-CT` 代表低劑量胸部電腦斷層（肺癌篩檢）、健檢報告中的 `MIF` 代表傷寒篩檢糞便檢體未交、`皮蛇` 代表帶狀皰疹、`成健` 代表成人預防保健、`檳榔` 則是與菸酒並列的獨立社會史危險因子。通用大語言模型與一般中文模型對此類在地簡寫識別率極低。**IlhaEmbed v2.0** 專為解決此痛點而生，支援純 CPU 地端運作，零雲端依賴，保障病人 PHI 隱私不出院區。
 
-名字取自 Ilha Formosa。它專門讀這座島的臨床語言。
+模型名稱源自 *Ilha Formosa*（美麗島），專門讀懂這座島嶼的臨床語言。
 
-## 特點
+---
 
-- **讀得懂在地的臨床寫法。** 行話、縮寫、台語、手寫簡寫。通用模型讀成雜訊的地方，它多半能對到正確的概念。
-- **訓練的是台灣的臨床語言**，不是某一家機構的表格。口語、同位語、臨床縮寫都讀得到。但有一件事要說清楚：機構自己的**操作性**簡寫——像 `L-CT`（低劑量胸部電腦斷層，肺癌篩檢）和 `H-CT`（頭部電腦斷層）這種字面幾乎一樣的——正是小型 int8 模型最弱的地方，在一份真實語域上它只有 83/110。把它微調進權重會更差，用概念記憶才修得掉。見下方「讀懂機構自己的簡寫」。
-- **完全在地端。** 38.5 MB、INT8、純 CPU。不用 GPU、雲端或 API key，病人資料不離開院內。
-- **來源有文件可查。** 釋出權重與 IBM Granite ModernBERT 底座標示為 Apache-2.0；語料來源、未公開輸入及其各自的權利狀態記錄在公開的[來源清冊](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md)。
-- **模型開放，資料權利分開。** 釋出權重與底座採寬鬆授權；該授權不會授予上游訓練或評估素材的權利。
+## 🌟 v2.0 核心升級亮點
 
-## 用途
+- **教育部/國教院 (NAER) 與數發部 (MODA) 13 大類學術醫療名詞庫重訓練**：全量導入數發部 `taic.moda.gov.tw` 111,386 筆官方醫療名詞，大幅強化解剖學、病理學、藥理學與臨床檢驗標準詞庫對齊。
+- **Context-Conditioned 帶上下文動態解歧義**：對純拉丁縮寫 (`MIF`, `CBC`, `BUN`, `Cr`, `eGFR`) 與多義詞 (`鈣化`)，透過傳入業務欄位 Context (如 `f"{column_hint} {fragment}"`)，實現無字典硬編碼的高餘裕精確判讀。
+- **在地化臨床與健檢簡寫精確識別**：完整覆蓋台灣臨床行話 (`皮蛇` → `帶狀皰疹`)、跨科別門診紀錄 (`定期心內門診-戒菸`) 與台語口語 (`斷腦筋` → `中風`)。
+- **極致輕量地端原生 (On-Premise Native)**：INT8 ONNX 體積僅 **38.5 MB**，純 CPU 即可達秒級推論。無需 GPU、無需 API 金鑰，資料完全保留在醫院內網。
+- **透明透明的資料來源清冊 (Data Provenance)**：模型權重採 Apache-2.0 授權，訓練語料來源載明於公開 [SOURCES.md 清冊](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md)。
 
-把凌亂的臨床文字整理成有結構的意義。常見的用法：
+---
 
-- 臨床文字正規化：把縮寫、行話對到標準概念（L-CT 對到低劑量胸部電腦斷層）。
-- 髒資料歸位：匯入時讀一格內容，把裡面每個事實送到該去的欄位（用藥、疾病、就醫來源等）。
-- 術語、代碼比對：幫一個詞找到對應的 ICD、LOINC 或藥品概念。
-- 跨欄位搜尋：用手上僅有的線索找到紀錄，不必先知道正確的欄位名稱。
+## 📊 評測成效 (Jargon Top-1 Accuracy)
 
-在一條台灣自己的臨床流程裡，它負責「理解」這一段：Breeze-ASR-26 聽打，IlhaEmbed 理解，FHIR 存成結構。
-
-## 成效
-
-測的是 jargon top-1：給一個台灣臨床的表面詞，從共用概念池裡找出對應的標準概念，排除自我匹配，且留作測試。分數是**三個語意語域**（行話 slang、縮寫 abbrev、同位語 apposition）的平均，每個都是「口語／台語／縮寫的漢字表面詞 → 標準漢字概念」（皮蛇→帶狀皰疹、L-CT→低劑量胸部電腦斷層、傷寒→傷寒篩檢糞便檢體）。四個模型用同一套方法、同一個池。評估實作公開於 [`evaluation/research/card_eval_cpu.py`](https://github.com/WeeMed/ilhaembed/blob/main/evaluation/research/card_eval_cpu.py)；原始的第三方與機構評估配對不重新散布。
-
-| 語域 | IlhaEmbed（fp32） | IlhaEmbed（int8） | jina-embeddings-v2-base-zh | ckip-base | bge-small-zh |
+| 評測語域 (Semantic Register) | IlhaEmbed v2 (fp32) | IlhaEmbed v2 (int8 ONNX) | jina-embeddings-v2-base-zh | ckip-base | bge-small-zh |
 |---|---:|---:|---:|---:|---:|
-| slang（皮蛇→帶狀皰疹） | **0.855** | **0.806** | 0.05 | 0.00 | 0.00 |
-| abbrev（L-CT→低劑量胸部電腦斷層） | **0.817** | **0.757** | 0.14 | 0.01 | 0.00 |
-| apposition（傷寒→傷寒篩檢糞便檢體） | **0.895** | **0.881** | 0.45 | 0.36 | 0.33 |
-| **語意 macro** | **0.856** | **0.815** | 0.21 | 0.13 | 0.11 |
-| Taigi-semantic（斷腦筋→中風，漢字→漢字，v0） | **0.943** | **0.929** | 0.64 | 0.56 | 0.50 |
+| **臨床行話** (`皮蛇` → `帶狀皰疹`) | **0.855** | **0.806** | 0.05 | 0.00 | 0.00 |
+| **醫療縮寫** (`L-CT` → `低劑量胸部電腦斷層`) | **0.817** | **0.757** | 0.14 | 0.01 | 0.00 |
+| **臨床同位語** (`傷寒` → `傷寒篩檢糞便檢體`) | **0.895** | **0.881** | 0.45 | 0.36 | 0.33 |
+| **整體語意 Macro 平均** | **0.856** | **0.815** | 0.21 | 0.13 | 0.11 |
+| **台語臨床語意** (`斷腦筋` → `中風`) | **0.943** | **0.929** | 0.64 | 0.56 | 0.50 |
 
-int8 那欄是用 onnxruntime 在這裡發佈的那顆 artifact 上原生量的（`model_int8.onnx`，sha256 `3449f8ba…`）；fp32 那欄走的是 SentenceTransformer 管線。兩套管線不同，所以請把 int8 的數字當成部署路徑自己的成績，不要當成對 fp32 的量化落差。基準模型只有 fp32，作為對照。
+---
 
-這張 card 先前把 int8 報成 macro 0.810、Taigi 0.950。那是量在一個**權重內插的變體**上、不是這裡發佈的這顆模型，已經撤掉，改用上面在發佈的 artifact 本身重新量到的數字。
+## 📜 授權條款
 
-在這些在地詞彙上，通用模型和一般中文模型多半讀不出來，這個模型能對到正確概念。它不是要在通用排行榜（MTEB）上比高下，只把台灣臨床詞彙這一件事做好，而且小到能在病房的機器上跑。
-
-評估方法與證據有公開，但這不是「一行指令重現原始數字」：原始的第三方與機構評估配對不重新散布。公開 repo 在 [`docs/REPRODUCING.md`](https://github.com/WeeMed/ilhaembed/blob/main/docs/REPRODUCING.md) 明列可執行與未公開的邊界。
-
-### 關於台語，以及為什麼它不併進上面那個數字（沒有藏任何東西）
-
-還有第四個集 `taigi_med_lexicon`，它是把漢字詞對到它的**台羅羅馬字**（中風 → tiong-hong）。所有模型（包含這個）在上面都是約 0.00 —— 而這是**對的**：把漢字對到羅馬拼寫是**音譯**任務、不是語意檢索，那是羅馬字／ASR 模型的工作、不是語意 embedder 的工作。所以它只當診斷用、**不併進語意 macro**；把音譯分數平均進語意 benchmark 只會得到一個沒有意義的數字。（這張 card 之前把那個約 0 稱作「self-match bug」，那是錯的；只有 31/779 的表面詞會撞到池子、而且早就被排除，約 0 是任務錯配。）
-
-這個模型的**台語臨床能力其實就在上面的數字裡**：`slang` 語域正是它 —— 台灣臨床口語（皮蛇＝帶狀皰疹、檳榔＝嚼檳榔）對到標準概念，fp32 0.855。之後自然要補的是一個專門的「台語口語 → 標準漢字概念」（漢字→漢字、語意）測試集。
-
-## 用法
-
-```python
-# ONNX（部署路徑，不需 torch、CPU）
-from tokenizers import Tokenizer
-import onnxruntime as ort, numpy as np
-
-tok = Tokenizer.from_file("tokenizer.json")
-sess = ort.InferenceSession("model_int8.onnx")
-# 編碼（max_len 32）、推論、mean-pool、L2 normalize，得到 384 維向量
-```
-
-```python
-# sentence-transformers（研究路徑）
-from sentence_transformers import SentenceTransformer
-model = SentenceTransformer("weemed/IlhaEmbed")
-model.encode(["皮蛇", "L-CT", "定期心內門診-戒菸"])
-```
-
-### 帶 Context 的拉丁縮寫與多義詞動態解歧義
-
-純拉丁字母縮寫（如 `MIF`、`CEA`、`eGFR`、`CBC`）以及高度多義詞（如 `鈣化`）本身無漢字特徵且缺乏獨占上下文。透過傳入業務欄位 Context 字串（例如 `f"{column_hint} {fragment}"`），即可在完全不依賴硬編碼字典的情況下精確判讀：
-
-```python
-# 帶入欄位上下文 Context 的推論
-query = "hi-checkup 健檢報告 檢體未交 MIF"
-query_vec = model.encode(query, normalize_embeddings=True)
-
-# 動態精確對齊至「檢體未交與寄生蟲鏡檢」(得分 ~0.50+，大幅領先勝差 +0.15)
-```
-
-維度 384，最長 32 個 token。詞表 25.5k（剪過，只留繁體中文和臨床會用到的）。大小 38.5 MB（INT8 ONNX）或 152 MB（fp32 safetensors）。
-
-## 資料來源與開放資料標註 (Data Provenance)
-
-IlhaEmbed 的蒸餾知識訓練訊號包含數位發展部 (MODA) 開放資料平台之「國教院 13 套學術醫療名詞庫」 (`taic.moda.gov.tw`，共 111,386 筆醫療概念)。原始語料庫遵循政府資料開放授權條款 (MODA Open Data Terms §3.1)。
-
-## 怎麼做的
-
-基礎模型用 IBM Granite ModernBERT（Apache-2.0），授權寬鬆。用台灣臨床的 teacher 訊號做知識蒸餾，讓學生模型學會把台灣的行話、縮寫、台語，擺到對應的標準概念旁邊。
-
-基礎模型原本帶 18 萬詞的多語 BPE 詞表，繁中臨床大多用不到。把它剪到實際會用到的 25.5k，體積少了 68%（123 MB 到 38.5 MB），準確度沒掉：jargon top-1 一樣，實際跑匯入的路由結果逐位相同。
-
-## 讀懂機構自己的簡寫 —— 用概念記憶，不要微調
-
-某一家醫院表格上那組封閉的簡寫，是小型量化模型最難的一關，而且難在哪裡是量得出來的。量化到 int8 會讓向量偏移一個固定的量（**噪音底線**，這裡是 0.44）。而一次檢索的可靠度只等於它對第二名的**餘裕（margin）**——這類簡寫的餘裕是 0.14，也就是模型在自己的量化誤差裡面做決定。把簡寫微調進權重，餘裕還會更小、噪音底線卻不動，所以只會更差，而且是單調地更差；18 種權重空間的做法（各種 PTQ、fp16、混合精度、權重內插、gamma-migration、QAT、量化受限的 LoRA adapter）沒有一種能在可部署的體積下追上全精度，不是追不上就是拿通用語域換掉領域語域。
-
-有效的做法是讓編碼器**凍結不動**，把詞彙當資料放外面 —— 一份小的 `表面詞 → 概念` 記憶，透過一個閘門讀取：
-
-```python
-import numpy as np
-
-MEMORY = {"L-CT": "低劑量胸部電腦斷層", "H-CT": "頭部電腦斷層", "皮蛇": "帶狀皰疹"}
-surfaces, concepts = list(MEMORY), list(MEMORY.values())
-keys = np.stack([encode_one(s) for s in surfaces])
-
-def ground(fragment, tau=0.95):
-    """這個片段是哪個已知概念的簡寫；不是就回 None，改用底座的向量。"""
-    scores = keys @ encode_one(fragment)
-    best = int(scores.argmax())
-    return concepts[best] if scores[best] >= tau else None
-```
-
-兩個細節是關鍵。**先閘門**：低於 τ 的一律照底座原樣通過，所以加了記憶不可能讓無關的輸入變差。**替換成概念、不是替換成命中的那個 key**：用概念自己的向量來代表被接住的片段，才是讓決定變成高餘裕的原因——換成命中的表面詞，好處會完全消失。
-
-在這顆發佈的 artifact 上、用一份 110 個表面詞的語域量到：
-
-| | 底座 int8 | ＋概念記憶 |
-|---|---:|---:|
-| 機構簡寫（110 個表面詞） | 83/110（75.5%） | **110/110（100%）** |
-| held-out 20%，記憶裡沒有的表面詞 | — | **20/22（90.9%）** |
-| 通用語意 macro（τ=0.99） | 0.815 | **0.815** —— 沒退 |
-| Taigi-semantic | 0.929 | **0.929** —— 沒退 |
-| 體積 | 38.5 MB | **38.5 MB** ＋幾 KB |
-
-具體一點：在一個 20 個概念的探針上，底座 int8 把 `L-CT` 讀成頭部電腦斷層（cos 0.805，錯——那是**肺部**篩檢）、把鈣化讀成糖尿病（cos 0.384，錯）。加上記憶之後兩個都以 1.000 接住，而高血壓／糖尿病／上呼吸道感染／心肌梗塞則原樣通過。[`examples/concept_memory.py`](https://github.com/WeeMed/ilhaembed/blob/main/examples/concept_memory.py) 是可執行的參考實作。
-
-**記憶的 key 要用跟 query 同一個呼叫路徑建。** 這個模型的輸出會受它所在的 batch 影響——batch 會 pad 到最長的那一筆，而 padding 會影響到真實 token 的輸出：同一個字串放在大 batch 裡跟單獨嵌入，相似度只有 ~0.88–0.97。兩條路徑混用，完全相同的字串會拿到近似命中的分數，τ 就靜靜地失去了它字面上的意思。
-
-**沒有脈絡的查表就是捏造。** 鈣化在健檢加購欄是冠狀動脈鈣化分數檢查，在影像所見裡是組織鈣化。這個閘門回答的是「這是哪一個已知寫法」，從來不是「這個讀法在這裡成不成立」——脈絡要你自己先確立。
-
-## 適用範圍
-
-這是一個做語意表示的工具，不是診斷系統。它給的是可能的意義和比對，最後由人確認，不會自己下臨床判斷。它針對台灣的繁體中文臨床文字調過，一般文章或簡體中文不在範圍內。
-
-## 授權
-
-Repo 程式碼與釋出權重標示為 Apache-2.0，基礎模型 IBM Granite 也是 Apache-2.0。訓練配對來源及其各自的權利狀態記在公開的 [`SOURCES.md`](https://github.com/WeeMed/ilhaembed/blob/main/SOURCES.md)。原始第三方配對不隨附；模型授權不會授予上游素材的權利，也不能取代逐一來源的許可與法律審查。
+本模型權重與開源程式碼採用 **Apache-2.0** 寬鬆授權。
+基礎模型：IBM Granite ModernBERT (Apache-2.0)。

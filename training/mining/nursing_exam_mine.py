@@ -47,12 +47,15 @@ def clean_term(text: str) -> str:
 
 
 def parse_answers(a_text: str) -> dict[int, str]:
-    """Parse answer table from MOEX answer sheet text."""
+    """Parse answer table from MOEX answer sheet text (supports both 第N題 and tabular numbers)."""
     ans_map = {}
     lines = a_text.splitlines()
     for i, line in enumerate(lines):
-        if line.strip().startswith("題號"):
-            q_nums = [int(x) for x in re.findall(r"第\s*(\d+)\s*題", line)]
+        line_s = line.strip()
+        if line_s.startswith("題號"):
+            q_nums = [int(x) for x in re.findall(r"第\s*(\d+)\s*題", line_s)]
+            if not q_nums:
+                q_nums = [int(x) for x in re.findall(r"\b(\d{1,3})\b", line_s)]
             if i + 1 < len(lines):
                 ans_line = lines[i + 1]
                 ans_chars = re.findall(r"([A-D＃#])", ans_line)
@@ -62,7 +65,7 @@ def parse_answers(a_text: str) -> dict[int, str]:
 
 
 def parse_questions(q_text: str) -> list[dict]:
-    """Parse 80 questions and 4 choices from MOEX question text."""
+    """Parse up to 100 questions and 4 choices from MOEX question text."""
     text = q_text
     text = text.replace("\ue18c", " [A] ").replace("", " [A] ")
     text = text.replace("\ue18d", " [B] ").replace("", " [B] ")
@@ -72,7 +75,7 @@ def parse_questions(q_text: str) -> list[dict]:
     text = re.sub(r"頁次：\d+－\d+.*?\n", "\n", text)
     text = re.sub(r"\x0c", "\n", text)
 
-    pattern = re.compile(r"(?:^|\n)\s*(\d{1,2})\s{2,}")
+    pattern = re.compile(r"(?:^|\n)\s*(\d{1,3})\s{2,}")
     parts = pattern.split(text)
 
     questions = []
@@ -205,10 +208,11 @@ ALL_YEARS = [str(y) for y in range(101, 115)]
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Mine MOEX Nursing Exams for IlhaEmbed")
+    parser = argparse.ArgumentParser(description="Mine MOEX Nursing & Physician Stage 1 Exams for IlhaEmbed")
     parser.add_argument("--years", nargs="+", default=ALL_YEARS, help="Exam years (e.g. 101 .. 114)")
+    parser.add_argument("--depts", nargs="+", default=["護理師", "醫師(一)", "醫師（一）"], help="Target exam departments")
     parser.add_argument("--limit", type=int, default=500, help="Max exam papers to process")
-    parser.add_argument("--cache-dir", type=Path, default=Path("cache/moex_nursing"), help="Cache directory")
+    parser.add_argument("--cache-dir", type=Path, default=Path("cache/moex_exams"), help="Cache directory")
     parser.add_argument("--out-dir", type=Path, default=Path("training/mining"), help="Output directory")
     args = parser.parse_args()
 
@@ -223,13 +227,20 @@ def main():
     reader = csv.reader(io.StringIO(content))
     header = next(reader)
 
-    nursing_rows = []
+    candidate_rows = []
     for r in reader:
-        if r[0] in args.years and "護理師" in r[7] and r[10] == "測驗題":
-            nursing_rows.append(r)
+        if r[0] in args.years and r[10] == "測驗題":
+            dept = r[7]
+            subj = r[9]
+            if any(d in dept for d in args.depts):
+                if "醫師" in dept:
+                    # Only keep Physician Stage 1 Basic Medical Sciences (醫學一 & 醫學二)
+                    if not (subj.startswith("醫學(一)") or subj.startswith("醫學（一）") or subj.startswith("醫學(二)") or subj.startswith("醫學（二）")):
+                        continue
+                candidate_rows.append(r)
 
-    print(f"Found {len(nursing_rows)} candidate nursing exams for years {args.years}.")
-    target_rows = nursing_rows[: args.limit]
+    print(f"Found {len(candidate_rows)} candidate nursing & physician stage 1 exams for years {args.years}.")
+    target_rows = candidate_rows[: args.limit]
     print(f"Processing top {len(target_rows)} exam papers...")
 
     all_jargon = set()

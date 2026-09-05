@@ -33,41 +33,66 @@ def set_seed(seed: int = SEED):
 
 
 class ModelWrapper:
-    """Loads IlhaEmbed (or any ModernBERT/BERT model) and produces unit-normalized vectors."""
+    """Loads IlhaEmbed (PyTorch or ONNX) and produces unit-normalized vectors."""
 
     def __init__(self, model_id_or_path: str, device: str = "cpu"):
         self.device = device
-        print(f"Loading model '{model_id_or_path}' on {device}...")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_id_or_path)
-        self.model = AutoModel.from_pretrained(model_id_or_path).to(device)
-        self.model.eval()
+        self.is_onnx = False
+        p = Path(model_id_or_path)
+        if model_id_or_path.endswith(".onnx") or (p / "model_int8.onnx").exists():
+            import onnxruntime as ort
+            self.is_onnx = True
+            onnx_path = model_id_or_path if model_id_or_path.endswith(".onnx") else str(p / "model_int8.onnx")
+            tok_dir = str(p.parent) if model_id_or_path.endswith(".onnx") else model_id_or_path
+            print(f"Loading ONNX model '{onnx_path}' on CPU...")
+            self.tokenizer = AutoTokenizer.from_pretrained(tok_dir)
+            self.session = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+        else:
+            print(f"Loading PyTorch model '{model_id_or_path}' on {device}...")
+            self.tokenizer = AutoTokenizer.from_pretrained(model_id_or_path)
+            self.model = AutoModel.from_pretrained(model_id_or_path).to(device)
+            self.model.eval()
 
-    @torch.no_grad()
     def embed(self, texts: list[str], batch_size: int = 128) -> np.ndarray:
         all_vecs = []
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
-            inputs = self.tokenizer(
-                batch,
-                padding=True,
-                truncation=True,
-                max_length=MAX_LEN,
-                return_tensors="pt",
-            ).to(self.device)
-
-            outputs = self.model(**inputs)
-            # ModernBERT / BERT mean pooling with attention mask
-            token_embeddings = outputs.last_hidden_state
-            input_mask_expanded = (
-                inputs.attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-            )
-            sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
-            sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-            mean_pooled = sum_embeddings / sum_mask
-
-            # L2 normalize
-            normalized = torch.nn.functional.normalize(mean_pooled, p=2, dim=1)
-            all_vecs.append(normalized.cpu().numpy())
+            if self.is_onnx:
+                inputs = self.tokenizer(
+                    batch,
+                    padding=True,
+                    truncation=True,
+                    max_length=MAX_LEN,
+                    return_tensors="np",
+                )
+                feed = {
+                    "input_ids": inputs["input_ids"].astype(np.int64),
+                    "attention_mask": inputs["attention_mask"].astype(np.int64),
+                }
+                out = self.session.run(["last_hidden_state"], feed)[0]
+                mask = inputs["attention_mask"][:, :, None].astype(np.float32)
+                pooled = (out * mask).sum(axis=1) / np.clip(mask.sum(axis=1), 1e-9, None)
+                normalized = pooled / np.clip(np.linalg.norm(pooled, axis=1, keepdims=True), 1e-9, None)
+                all_vecs.append(normalized.astype(np.float32))
+            else:
+                with torch.no_grad():
+                    inputs = self.tokenizer(
+                        batch,
+                        padding=True,
+                        truncation=True,
+                        max_length=MAX_LEN,
+                        return_tensors="pt",
+                    ).to(self.device)
+                    outputs = self.model(**inputs)
+                    token_embeddings = outputs.last_hidden_state
+                    input_mask_expanded = (
+                        inputs.attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+                    )
+                    sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
+                    sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+                    mean_pooled = sum_embeddings / sum_mask
+                    normalized = torch.nn.functional.normalize(mean_pooled, p=2, dim=1)
+                    all_vecs.append(normalized.cpu().numpy())
 
         return np.concatenate(all_vecs, axis=0)
 

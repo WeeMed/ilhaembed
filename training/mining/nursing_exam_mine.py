@@ -16,6 +16,7 @@ import json
 import os
 import re
 import subprocess
+import time
 import urllib.request
 from pathlib import Path
 
@@ -176,25 +177,37 @@ def mine_exam(q_text: str, a_text: str, meta: dict) -> tuple[set, list]:
 
 
 def download_and_extract(url: str, cache_dir: Path, prefix: str) -> str:
-    """Download PDF and convert to layout text using pdftotext."""
+    """Download PDF and convert to layout text using pdftotext with retry."""
     cache_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = cache_dir / f"{prefix}.pdf"
     txt_path = cache_dir / f"{prefix}.txt"
 
     if not txt_path.exists():
         if not pdf_path.exists():
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                pdf_path.write_bytes(resp.read())
+            last_err = None
+            for attempt in range(3):
+                try:
+                    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(req, timeout=30) as resp:
+                        pdf_path.write_bytes(resp.read())
+                    break
+                except Exception as e:
+                    last_err = e
+                    time.sleep(1.0)
+            else:
+                raise RuntimeError(f"Failed to download {url} after 3 attempts: {last_err}")
         subprocess.run(["pdftotext", "-layout", str(pdf_path), str(txt_path)], check=True)
 
     return txt_path.read_text(encoding="utf-8", errors="ignore")
 
 
+ALL_YEARS = [str(y) for y in range(101, 115)]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Mine MOEX Nursing Exams for IlhaEmbed")
-    parser.add_argument("--years", nargs="+", default=["112", "113"], help="Exam years (e.g. 112 113)")
-    parser.add_argument("--limit", type=int, default=10, help="Max exam papers to process")
+    parser.add_argument("--years", nargs="+", default=ALL_YEARS, help="Exam years (e.g. 101 .. 114)")
+    parser.add_argument("--limit", type=int, default=500, help="Max exam papers to process")
     parser.add_argument("--cache-dir", type=Path, default=Path("cache/moex_nursing"), help="Cache directory")
     parser.add_argument("--out-dir", type=Path, default=Path("training/mining"), help="Output directory")
     args = parser.parse_args()

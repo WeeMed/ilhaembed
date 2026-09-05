@@ -40,7 +40,7 @@ def main():
 
     for r in rd("unified_med_lexicon.tsv"):
         add(r["surface"], r["canonical_zh"])
-    for name in ("wiki_pairs.tsv", "appos_pairs.tsv", "tw_med_pairs.tsv"):
+    for name in ("wiki_pairs.tsv", "appos_pairs.tsv", "tw_med_pairs.tsv", "nursing_jargon_pairs.tsv"):
         for r in rd(name):
             add(r["surface"], r["canonical"])
 

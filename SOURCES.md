@@ -19,6 +19,7 @@ Private generated pair files are intentionally not published. Public readers sho
 | `wiki-redirect` | Chinese Wikipedia redirects | [MediaWiki API](https://www.mediawiki.org/wiki/API:Redirects) | 284 | CC BY-SA; attribution/share-alike obligations apply | Medical aliases mapped to article titles |
 | `wiki-appos` | Chinese Wikipedia introductory text | [MediaWiki API](https://www.mediawiki.org/wiki/Extension:TextExtracts) plus apposition patterns | 371 | CC BY-SA; attribution/share-alike obligations apply | Phrases such as 又稱／俗稱／簡稱／縮寫為 yielded clinical abbreviation pairs |
 | `rsroc-weiei` | 中華民國放射線醫學會衛教文章 | [rsroc.org.tw knowledge pages](https://rsroc.org.tw/knowledge/) | 34 | Society copyright; no raw redistribution permission recorded | Short factual appositions for imaging abbreviations such as LDCT, CTA, RFA, and TACE; articles are not redistributed |
+| `moex-nursing` | 考選部護理師專技高考歷屆試題 | [MOEX open data](https://wwwc.moex.gov.tw/main/Exam/wHandExamQandA_CSV.ashx) via `training/mining/nursing_exam_mine.py` | 387 pairs, 2,205 triplets | 著作權法第9條第1項第5款（公眾領域 Public Domain） | 台灣護理臨床縮寫、醫囑常規、護理量表與專家級考題誘答困難負例 |
 
 ### Formal Medical Terminology & Standards
 

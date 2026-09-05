@@ -7,6 +7,7 @@ __pycache__/
 data/
 results/
 models/
+checkpoints/
 cache/
 *.onnx
 *.safetensors

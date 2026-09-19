@@ -114,8 +114,11 @@ def run_value_to_category(models: dict, taxonomy: dict, auto_classifiable: dict)
     the negative side, not the positive one. See EXPERIMENTS.md for the retraction).
 
     Positives: semantic_labels rows whose category is a real, auto-classifiable taxonomy category,
-    plus gold_labels rows that carry a real category (both sides drawn from labels a human already
-    confirmed, never invented here). Negatives: semantic_labels residue rows + gold_labels
+    plus gold_labels rows that carry a real category. These files mix rule-derived,
+    draft, and reviewed labels; independent adjudication is not established here.
+    The 2026-09-06 data audit found contradictory positive/negative fragments, so
+    these counts are historical regression diagnostics, not qualified clinical accuracy.
+    Negatives: semantic_labels residue rows + gold_labels
     likely_overrouted/null rows -- everything a correct classifier must refuse.
     """
     auto_categories = {c for c in taxonomy if auto_classifiable.get(c, True)}

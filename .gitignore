@@ -9,6 +9,9 @@ results/
 models/
 checkpoints/
 cache/
+research/artifacts/
+research/*.md
+.research-project.json
 *.onnx
 *.safetensors
 *.tsv

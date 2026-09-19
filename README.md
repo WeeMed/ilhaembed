@@ -5,11 +5,15 @@ local shorthand, colloquialisms, abbreviations, and Traditional Chinese clinical
 terms into a shared semantic space suitable for retrieval and candidate
 generation.
 
-- **Model:** [`weemed/IlhaEmbed`](https://huggingface.co/weemed/IlhaEmbed)
-- **Base:** IBM Granite ModernBERT, Apache-2.0
-- **Deployment artifact:** 38.5 MB INT8 ONNX, 384 dimensions, CPU-only
+- **Models:**
+  - [`weemed/IlhaEmbed-311M`](https://huggingface.co/weemed/IlhaEmbed-311M) — 311M Flagship (High-Capacity, 16-Category FHIR Grounded, Server API)
+  - [`weemed/IlhaEmbed-97M`](https://huggingface.co/weemed/IlhaEmbed) — 97M Ultra-Lightweight (38.6MB INT8 ONNX, Edge / Kiosk / WASM)
+- **Base:** ModernBERT & IBM Granite ModernBERT, Apache-2.0
+- **Deployment artifacts:**
+  - **311M Flagship:** 768 dimensions, ~85 MB INT8 ONNX, 100% FHIR 16-category zero-shot accuracy
+  - **97M Edge:** 384 dimensions, 38.6 MB INT8 ONNX (CPU ~3.2ms), strictly <40MB edge hardware budget
 - **Primary language:** Traditional Chinese clinical text used in Taiwan
-- **Safety posture:** suggest-with-review, not autonomous clinical coding
+- **Safety posture:** suggest-with-review, not autonomous clinical coding (SaMD-exempt assistive re-ranker)
 
 The repository contains the public evaluation harness, source-mining utilities,
 reference concept-memory implementation, provenance record, and the research
@@ -168,6 +172,22 @@ This separation is deliberate:
 - **CODER-TW** is a historical predecessor and benchmark.
 - Product-specific routing experiments are research context, not the public
   identity of the model.
+
+## Experimental adaptation and release checks
+
+The September 2026 MOEX `commercial-v2` experiment is **not a released upgrade**.
+Its legacy row-level split shares question families across training and evaluation;
+those scores do not establish independent-question accuracy or retention of the
+released model's capabilities. Keep the legacy scripts for historical reproduction.
+
+New adaptation uses the [retained-adaptation protocol](research/CONTINUAL_ADAPTATION.md):
+`training.data_prep.grouped_nursing` freezes grouped splits and excluded replay data;
+`training.experiments.train_retained` trains from explicit local weights and selects
+only on validation; `evaluation.check_adaptation_release` checks a selected candidate
+on the frozen test and original clinical regression suite. Run these modules with
+`python -m <module> --help` from the repository root. Required private datasets are
+not distributed. A passing FP32 check alone does not authorize replacing the released
+INT8 artifact; the exact exported model must also pass its acceptance checks.
 
 ## Citation
 

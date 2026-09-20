@@ -1,5 +1,7 @@
 # IlhaEmbed
 
+[English](README.md) | [繁體中文](README_zh_tw.md)
+
 IlhaEmbed is an open embedding model for Taiwanese clinical language. It maps
 local shorthand, colloquialisms, abbreviations, and Traditional Chinese clinical
 terms into a shared semantic space suitable for retrieval and candidate

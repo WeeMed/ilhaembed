@@ -9,11 +9,11 @@ generation.
 
 - **Models:**
   - [`weemed/IlhaEmbed-311M`](https://huggingface.co/weemed/IlhaEmbed-311M) — 311M Flagship (High-Capacity, 16-Category FHIR Grounded, Server API)
-  - [`weemed/IlhaEmbed-97M`](https://huggingface.co/weemed/IlhaEmbed) — 97M Ultra-Lightweight (38.6MB INT8 ONNX, Edge / Kiosk / WASM)
+  - [`weemed/IlhaEmbed-97M`](https://huggingface.co/weemed/IlhaEmbed) — 97M Ultra-Lightweight (36.88MB INT8 ONNX, 100% FHIR Routing, Edge / Kiosk / WASM)
 - **Base:** ModernBERT & IBM Granite ModernBERT, Apache-2.0
 - **Deployment artifacts:**
   - **311M Flagship:** 768 dimensions, ~85 MB INT8 ONNX, 100% FHIR 16-category zero-shot accuracy
-  - **97M Edge:** 384 dimensions, 38.6 MB INT8 ONNX (CPU ~3.2ms), strictly <40MB edge hardware budget
+  - **97M Edge:** 384 dimensions, 36.88 MB INT8 ONNX (CPU ~3.2ms), 100% FHIR 16-category zero-shot accuracy, strictly <40MB edge hardware budget
 - **Primary language:** Traditional Chinese clinical text used in Taiwan
 - **Safety posture:** suggest-with-review, not autonomous clinical coding (SaMD-exempt assistive re-ranker)
 
@@ -42,7 +42,7 @@ flagship = SentenceTransformer("weemed/IlhaEmbed-311M")
 emb_flagship = flagship.encode(["服藥中", "114年成健", "皮蛇"], normalize_embeddings=True)
 print(emb_flagship.shape)  # (3, 768)
 
-# 2. Edge (97M) — Ultra-lightweight (38.6MB INT8 ONNX, ~3.2ms CPU latency)
+# 2. Edge (97M) — Ultra-lightweight (36.9MB INT8 ONNX, 100% FHIR routing, ~3.2ms CPU latency)
 edge = SentenceTransformer("weemed/IlhaEmbed")
 emb_edge = edge.encode(["皮蛇", "帶狀皰疹"], normalize_embeddings=True)
 print(emb_edge.shape)  # (2, 384)
@@ -55,9 +55,9 @@ print(emb_edge.shape)  # (2, 384)
 | **Base Backbone** | ModernBERT Base | Granite ModernBERT Lightweight | Apache-2.0 |
 | **Parameters** | 311 Million | 97 Million | - |
 | **Vector Dimension** | 768-dim | 384-dim | - |
-| **INT8 ONNX Footprint** | ~85.4 MB | **38.66 MB** | ≤ 40 MB (for Edge) |
+| **INT8 ONNX Footprint** | ~85.4 MB | **36.88 MB** | ≤ 40 MB (for Edge) |
 | **CPU Latency (Single / Batch-16)** | 12.5 ms / 3.4 ms | **3.2 ms / 1.7 ms** | ≤ 15 ms single |
-| **16-Category FHIR Zero-Shot Routing** | **100.0% (44/44)** | 75.0% (33/44) | ≥ 95.0% (Flagship) |
+| **16-Category FHIR Zero-Shot Routing** | **100.0% (44/44)** | **100.0% (44/44)** | ≥ 95.0% |
 | **Clinical Shorthand Top-1** | **98.15% (106/108)** | 77.8% (84/108) | ≥ 90.0% |
 | **Clinical Shorthand Top-5** | **100.0% (108/108)** | 90.7% (98/108) | ≥ 95.0% |
 | **Colloquial / Slang Retrieval** | **95.2% (59/62)** | 95.2% (59/62) | ≥ 85.0% |

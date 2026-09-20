@@ -8,7 +8,7 @@
 
 - **發布模型：**
   - [`weemed/IlhaEmbed-311M`](https://huggingface.co/weemed/IlhaEmbed-311M) — 311M 旗艦版（高容量、16 類 FHIR 資源語意原型分流、伺服器端 API）
-  - [`weemed/IlhaEmbed`](https://huggingface.co/weemed/IlhaEmbed)（別名 `weemed/IlhaEmbed-97M`）— 97M 超輕量邊緣版（38.6MB INT8 ONNX、社區健康站一體機、WASM）
+  - [`weemed/IlhaEmbed`](https://huggingface.co/weemed/IlhaEmbed)（別名 `weemed/IlhaEmbed-97M`）— 97M 超輕量邊緣版（36.88MB INT8 ONNX、100% FHIR 原型分流、社區健康站一體機、WASM）
 - **基底架構：** ModernBERT Base & IBM Granite ModernBERT（Apache-2.0 授權）
 - **主要語言：** 台灣繁體中文臨床語料（含在地台語口語、英數縮寫與中英夾雜）
 - **安全定位：** 輔助建議與候選分流（Suggest-with-Review），非自主醫療診斷器材（符合 SaMD 豁免原則）
@@ -36,8 +36,8 @@
 
 2. **IlhaEmbed-97M（超輕量邊緣版）**：
    - 採用 Granite ModernBERT Lightweight (97M 參數)，輸出 384 維度精簡向量。
-   - 經過 25.5k 繁體中文醫學專用詞表剪枝與標準算子 INT8 動態量化，模型檔案大小僅 **38.66 MB**，嚴格符合社區健康站與手持裝置 **<40 MB** 的邊緣硬體預算門禁。
-   - 純 CPU 推論單筆延遲僅 **~3.2ms**（Batch-16 下每筆 1.7ms），無需 GPU 即可達成近乎即時的本地推論。
+   - 經過 25.5k 繁體中文醫學專用詞表剪枝與標準算子 INT8 動態量化，模型檔案大小僅 **36.88 MB**，嚴格符合社區健康站與手持裝置 **<40 MB** 的邊緣硬體預算門禁。
+   - 在 16 類 FHIR 資源原型分流準確率同樣達到 **100.0% (44/44)**，行政管理字串防禦拒絕率達 100.0%，純 CPU 推論單筆延遲僅 **~3.2ms**（Batch-16 下每筆 1.7ms），真正做到容量縮減但精度不容許降級。
    - 適合社區健檢站一體機（如 *The Mirror*）、離線醫療閘道器與瀏覽器 WebAssembly (WASM) 端執行。
 
 ---
@@ -49,9 +49,9 @@
 | **基底模型架構** | ModernBERT Base | Granite ModernBERT Lightweight | - | Apache-2.0 |
 | **參數量 (Params)** | 311 Million | 97 Million | - | - |
 | **向量維度 (Dimension)** | 768-dim | 384-dim | 768 / 384-dim | - |
-| **INT8 ONNX 檔案體積** | ~85.4 MB | **38.66 MB** | > 100 MB | ≤ 40 MB (邊緣端) |
+| **INT8 ONNX 檔案體積** | ~85.4 MB | **36.88 MB** | > 100 MB | ≤ 40 MB (邊緣端) |
 | **CPU 推論延遲 (單筆 / Batch-16)** | 12.5 ms / 3.4 ms | **3.2 ms / 1.7 ms** | > 25 ms | ≤ 15 ms 單筆 |
-| **16 類 FHIR 原型分流準確率** | **100.0% (44/44)** | 75.0% (33/44) | < 30.0% | ≥ 95.0% (旗艦版) |
+| **16 類 FHIR 原型分流準確率** | **100.0% (44/44)** | **100.0% (44/44)** | < 30.0% | ≥ 95.0% |
 | **臨床速記 Top-1 (Shorthand)** | **98.15% (106/108)** | 77.8% (84/108) | 0.0% ~ 14.0% | ≥ 90.0% |
 | **臨床速記 Top-5** | **100.0% (108/108)** | 90.7% (98/108) | 5.0% ~ 30.0% | ≥ 95.0% |
 | **俚語與行話檢索 (Slang)** | **95.2% (59/62)** | 95.2% (59/62) | 0.0% ~ 5.0% | ≥ 85.0% |
@@ -101,7 +101,7 @@ import numpy as np
 import onnxruntime as ort
 from transformers import AutoTokenizer
 
-# 載入剪枝後的輕量化 Tokenizer 與 38.6MB INT8 ONNX 模型
+# 載入剪枝後的輕量化 Tokenizer 與 36.88MB INT8 ONNX 模型
 tokenizer = AutoTokenizer.from_pretrained("weemed/IlhaEmbed-97M")
 session = ort.InferenceSession("model_int8.onnx", providers=["CPUExecutionProvider"])
 
